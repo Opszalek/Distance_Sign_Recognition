@@ -1,0 +1,15 @@
+#LOGIC IS INVERTED
+*
+!.gitignore*
+
+
+
+
+
+#Definition of Folder Structure for tracking
+!*.py
+!*.txt
+!*.md
+
+
+
