@@ -44,12 +44,13 @@ def read_data(path):
 
 
 def refactor_labels(data, class_names, sign_class_index):
-    new_data = pd.DataFrame()
+    new_data = []
     text_labels = []
     for index, row in data.iterrows():
         if row[0] == sign_class_index:
-            new_data = new_data.append(row)
+            new_data.append(row)
         else:
+            print(row[0])
             text_labels.append(class_names[int(row[0])])
     return new_data, text_labels
 
@@ -64,6 +65,7 @@ def save_text_labels(text_labels, extension, file):
 
 
 def overwrite_labels(data, path):
+    data = pd.DataFrame(data)
     data.to_csv(path, header=False, index=False, sep=' ')
 
 
