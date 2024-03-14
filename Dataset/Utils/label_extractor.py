@@ -50,7 +50,6 @@ def refactor_labels(data, class_names, sign_class_index):
         if row[0] == sign_class_index:
             new_data.append(row)
         else:
-            print(row[0])
             text_labels.append(class_names[int(row[0])])
     return new_data, text_labels
 
@@ -59,7 +58,7 @@ def save_text_labels(text_labels, extension, file):
     if not os.path.exists(os.path.join(path_to_yolo_folder, extension, 'text_labels')):
         os.makedirs(os.path.join(path_to_yolo_folder, extension, 'text_labels'))
     path = os.path.join(path_to_yolo_folder, extension, 'text_labels', f'{file}.txt')
-    with open(path, 'w') as file:
+    with open(path, 'a') as file:
         for label in text_labels:
             file.write(label + '\n')
 
