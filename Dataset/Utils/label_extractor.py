@@ -12,10 +12,10 @@ def load_yaml(path):
     return data
 
 
-def return_class_names(prime_service):
-    if not prime_service['names'][-1] == 'sign-text':
+def return_class_names(data):
+    if not data['names'][-1] == 'sign-text':
         raise Exception('sign-text is not in the list')
-    return prime_service['names']
+    return data['names']
 
 
 def return_labels_files(path, extension):
