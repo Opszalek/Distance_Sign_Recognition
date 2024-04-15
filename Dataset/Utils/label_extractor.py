@@ -3,7 +3,7 @@ import pandas as pd
 import yaml
 import warnings
 
-path_to_yolo_folder = '../Junk/test_v2.v1i.yolov9'
+path_to_yolo_folder = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/yolov9/dataset_3'
 
 
 def load_yaml(path):
@@ -13,8 +13,8 @@ def load_yaml(path):
 
 
 def return_class_names(data):
-    if not data['names'][-1] == 'sign-text':
-        raise Exception('sign-text is not in the list')
+    if not data['names'][-1] == 'sign':
+        raise Exception('sign is not in the list')
     return data['names']
 
 
@@ -69,7 +69,7 @@ def overwrite_labels(data, path):
 
 
 def label_manager(files, class_names, extension):
-    sign_class_index = class_names.index('sign-text')
+    sign_class_index = class_names.index('sign')
     if check_labels(files, extension):
         for file in files:
             path = os.path.join(path_to_yolo_folder, extension, 'labels', file)
