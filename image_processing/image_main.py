@@ -2,7 +2,7 @@
 
 from ultralytics import YOLO
 
-model = YOLO("model_1.pt")  # load a pretrained model (recommended for training)
+model = YOLO("../Models/model_1.pt")  # load a pretrained model (recommended for training)
 
 # Use the model
 results = model.predict(source="0",show = True)
