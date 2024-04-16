@@ -8,6 +8,7 @@
 
 #Definition of Folder Structure for tracking
 !Models/
+!utils/
 !*.py
 !*.txt
 !*.md
