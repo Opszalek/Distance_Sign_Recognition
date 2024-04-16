@@ -2,17 +2,17 @@
 *
 !.gitignore*
 
-
-
-
-
 #Definition of Folder Structure for tracking
+image_processing/*
+!image_processing/text_recognition.py
+!image_processing/sign_recognition.py
+!Model_generator/
+!Model_generator/*
 !Models/
 !utils/
 !*.py
 !*.txt
 !*.md
 !*.pt
-
 
 
