@@ -1,49 +1,22 @@
 from utils.utils import timeit
+from image_processing.sign_recognition import SignRecognition
 from ultralytics import YOLO
 import cv2
 import pytesseract
 
-model = YOLO("../Models/model_1.pt")  # load a pretrained model (recommended for training)
-
-cam = cv2.VideoCapture(0)
-image = cv2.imread('../TESTS/img.png')  #load test image so we can test without camera
-i = 0
+# Variables and paths
+path_to_model = '../Models/model_1.pt'
+path_to_save_cropped = '../TESTS/cropped'
 test_image = True
 
+# Initialize model and camera
+sign_rec = SignRecognition(path_to_model, path_to_save_cropped)
+cam = cv2.VideoCapture(0)
 
-# -----------------Functions---from---object_detection----------------#
+# Load test image
+image = cv2.imread('../TESTS/img.png')  #load test image so we can test without camera
+
 # @timeit # decorator to measure time
-def predict_sign(data):
-    return model.predict(source=data)[0]
-
-
-def return_bboxes(results):
-    bboxes = []
-    for detection in results.boxes.data.tolist():
-        x, y, w, h, score, class_id = detection
-        bboxes.append((x, y, w, h, score, class_id))
-    return bboxes
-
-
-def crop_signs(image, bboxes):
-    signs = []
-    for box in bboxes:
-        x, y, w, h, score, class_id = box
-        crop = image[int(y):int(h), int(x):int(w)]
-        signs.append([crop, score, class_id])
-    return signs
-
-
-def save_cropped(signs, gps=None):
-    # TODO: Change path to be class variable
-    for sign in signs:
-        crop, score, class_id = sign
-        score = round(score, 2)
-        if gps:
-            cv2.imwrite(f'../TESTS/cropped/crop_sc-{score}_cl-{class_id}_gps{-gps}.png', crop)
-        else:
-            cv2.imwrite(f'../TESTS/cropped/crop_sc-{score}_cl-{class_id}.png', crop)
-
 
 # -----------------Functions---from---OCR----------------#
 def ocr_text(image):
@@ -56,10 +29,10 @@ while True:
         if not ret:
             break
 
-    results = predict_sign(image)
-    bboxes = return_bboxes(results)
-    signs = crop_signs(image, bboxes)
-    save_cropped(signs)
+    results = sign_rec.predict_sign(image)
+    bboxes = sign_rec.return_bboxes(results)
+    signs = sign_rec.crop_signs(image, bboxes)
+    sign_rec.save_cropped(signs)
     print(ocr_text(signs[0][0]))
 
 cam.release()
