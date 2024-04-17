@@ -7,14 +7,17 @@ import pytesseract
 # Variables and paths
 path_to_model = '../Models/model_1.pt'
 path_to_save_cropped = '../TESTS/cropped'
-test_image = True
+test_image = False
+path_to_video = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/VIDIO/VID_20240416_233026.mp4'
 
 # Initialize model and camera
-sign_rec = SignRecognition(path_to_model, path_to_save_cropped)
-cam = cv2.VideoCapture(0)
+sign_rec = SignRecognition(path_to_model, path_to_save_cropped, show_images=True, save_cropped=True)
+# cap = cv2.VideoCapture(0)#Kamera
+cap = cv2.VideoCapture(path_to_video)  #Filmik
 
 # Load test image
 image = cv2.imread('../TESTS/img.png')  #load test image so we can test without camera
+
 
 # @timeit # decorator to measure time
 
@@ -25,15 +28,11 @@ def ocr_text(image):
 
 while True:
     if not test_image:
-        ret, image = cam.read()
+        ret, image = cap.read()
         if not ret:
             break
 
-    results = sign_rec.predict_sign(image)
-    bboxes = sign_rec.return_bboxes(results)
-    signs = sign_rec.crop_signs(image, bboxes)
-    sign_rec.save_cropped(signs)
-    print(ocr_text(signs[0][0]))
+    signs = sign_rec.process_image(image)
 
-cam.release()
+cap.release()
 cv2.destroyAllWindows()
