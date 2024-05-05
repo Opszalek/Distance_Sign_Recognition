@@ -14,3 +14,5 @@ psutil>=5.9.8
 thop>=0.1.1-2209072238
 pycocotools>=2.0.7
 ultralytics>=8.1.47
+scikit-image>=0.14.2
+scipy>=1.1.0
