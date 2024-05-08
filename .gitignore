@@ -9,6 +9,7 @@ image_processing/*
 !Model_generator/
 !Model_generator/*
 !Models/
+!Models/*
 !utils/
 !*.py
 !*.txt
