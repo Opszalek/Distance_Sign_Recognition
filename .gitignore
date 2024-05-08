@@ -11,15 +11,15 @@ image_processing/*
 !Models/
 !Models/*
 !Models/Sign_recognition
-!Models/Sign_recognition/*
+#!Models/Sign_recognition/*
 !Models/Text_recognition
-!Models/Text_recognition/*
+#!Models/Text_recognition/*
 !Models/Text_detection
-!Models/Text_detection/*
+#!Models/Text_detection/*
 !utils/
 !*.py
 !*.txt
 !*.md
-!*.pt
+#!*.pt
 
 
