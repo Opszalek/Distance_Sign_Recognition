@@ -10,11 +10,11 @@ image_processing/*
 !Model_generator/*
 !Models/
 !Models/*
-!Models/Sign_recognition
+#!Models/Sign_recognition
 #!Models/Sign_recognition/*
-!Models/Text_recognition
+#!Models/Text_recognition
 #!Models/Text_recognition/*
-!Models/Text_detection
+#!Models/Text_detection
 #!Models/Text_detection/*
 !utils/
 !*.py
