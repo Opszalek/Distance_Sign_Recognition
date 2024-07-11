@@ -17,9 +17,11 @@ image_processing/*
 #!Models/Text_detection
 #!Models/Text_detection/*
 !utils/
+!utils/MixNet/
+!utils/MixNet/*
 !*.py
 !*.txt
 !*.md
-#!*.pt
+#!*.ptS
 
 
