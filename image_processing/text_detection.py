@@ -139,8 +139,9 @@ if __name__ == "__main__":
         print(file)
         text_recognizer = TextDetection()
         image_path = os.path.join(input_dir, file)
-        output_dir = 'output'
-        cropped_texts = text_recognizer.detect_text(cv2.imread(image_path))
-        for cropped_text in cropped_texts:
-            cv2.imshow("cropped_texts", cropped_text)
-            cv2.waitKey(0)
+        output_dir = os.path.join(project_root, "Dataset", "znaki_output")
+        main(image_path, output_dir, file)
+        # cropped_texts = text_recognizer.detect_text(cv2.imread(image_path))
+        # for cropped_text in cropped_texts:
+        #     cv2.imshow("cropped_texts", cropped_text)
+        #     cv2.waitKey(0)
