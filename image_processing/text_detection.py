@@ -6,15 +6,14 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
-# Dodaj ścieżki do katalogów, w których znajdują się wymagane moduły
 base_dir = os.path.abspath(os.path.dirname(__file__))
-project_root = os.path.abspath(os.path.join(base_dir, '..'))  # Katalog główny projektu
+project_root = os.path.abspath(os.path.join(base_dir, '..'))
 mixnet_dir = os.path.join(project_root, 'utils', 'MixNet')
 
-# Lista ścieżek do dodania
+
 module_paths = [
-    project_root,  # Katalog główny projektu
-    mixnet_dir    # Katalog MixNet
+    project_root,
+    mixnet_dir
 ]
 
 for module_path in module_paths:
@@ -52,7 +51,7 @@ class TextDetection:
 
     def preprocess_image(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        self.original_shape = image.shape[:2]  # Save the original shape
+        self.original_shape = image.shape[:2]
         image = cv2.resize(image, (cfg.test_size[1], cfg.test_size[0]))
         image = image.astype(np.float32) / 255.0
         image -= np.array(cfg.means)
@@ -134,10 +133,8 @@ def main(image_path, output_dir, file):
 
 
 if __name__ == "__main__":
-    # Path to the input image
     input_dir = os.path.join(project_root, "Dataset", "znaki")
 
-    # przeiteruj po wszystkich zdjeciach w folderze znaki
     for file in os.listdir(input_dir):
         print(file)
         text_recognizer = TextDetection()
