@@ -1,21 +1,24 @@
-#LOGIC IS INVERTED
+# Ignore everything
 *
-!*/
+
+# But not these directories and their files...
 !.gitignore
 !.gitmodules
 !README.md
 !requirements.txt
 !LICENSE
 
-#Definition of Folder Structure for tracking
+# Specific directories
+!image_processing/
+!Models/
+!Dataset/
+!Dataset/Utils/
+!utils/
+
+# Specific files in directories
 !image_processing/*.py
 !Models/Sign_recognition/README.md
-!Models/Text_recognition/README.md
 !Models/Text_detection/README.md
+!Models/Text_recognition/README.md
 !Dataset/Utils/label_extractor.py
-!utils/MixNet/
-
 !utils/utils.py
-
-
-
