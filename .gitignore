@@ -20,6 +20,8 @@
 
 # Specific files in directories
 !image_processing/*.py
+!Models/download_models.sh
+!Models/README.md
 !Models/Sign_recognition/README.md
 !Models/Text_detection/README.md
 !Models/Text_recognition/README.md
