@@ -1,27 +1,19 @@
 #LOGIC IS INVERTED
 *
-!.gitignore*
+!.gitignore
+!.gitmodules
+!README.md
+!requirements.txt
+!LICENSE
 
 #Definition of Folder Structure for tracking
-image_processing/*
-!image_processing/text_recognition.py
-!image_processing/sign_recognition.py
-!Model_generator/
-!Model_generator/*
-!Models/
-!Models/*
-#!Models/Sign_recognition
-#!Models/Sign_recognition/*
-#!Models/Text_recognition
-#!Models/Text_recognition/*
-#!Models/Text_detection
-#!Models/Text_detection/*
-!utils/
-!utils/MixNet/
-!utils/MixNet/*
-!*.py
-!*.txt
-!*.md
-#!*.ptS
+!image_processing/*
+!Models/Sign_recognition/README.md
+!Models/Text_recognition/README.md
+!Models/Text_detection/README.md
+!Dataset/Utils/label_extractor.py
+
+!utils/utils.py
+
 
 
