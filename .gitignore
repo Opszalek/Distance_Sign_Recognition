@@ -1,5 +1,6 @@
 #LOGIC IS INVERTED
 *
+!*/
 !.gitignore
 !.gitmodules
 !README.md
@@ -7,11 +8,7 @@
 !LICENSE
 
 #Definition of Folder Structure for tracking
-!image_processing/*
-!image_processing/image_main.py
-!image_processing/sign_recognition.py
-!image_processing/text_detection.py
-!image_processing/text_recognition.py
+!image_processing/*.py
 !Models/Sign_recognition/README.md
 !Models/Text_recognition/README.md
 !Models/Text_detection/README.md
