@@ -16,6 +16,7 @@
 !Models/Text_recognition/README.md
 !Models/Text_detection/README.md
 !Dataset/Utils/label_extractor.py
+!utils/MixNet/
 
 !utils/utils.py
 
