@@ -17,6 +17,7 @@
 !Dataset/
 !Dataset/Utils/
 !utils/
+!utils/MixNet/
 
 # Specific files in directories
 !image_processing/*.py
@@ -27,3 +28,4 @@
 !Models/Text_recognition/README.md
 !Dataset/Utils/label_extractor.py
 !utils/utils.py
+!utils/MixNet/*
