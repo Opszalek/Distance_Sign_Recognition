@@ -11,6 +11,9 @@
 # Specific directories
 !image_processing/
 !Models/
+!Models/Sign_recognition/
+!Models/Text_detection/
+!Models/Text_recognition/
 !Dataset/
 !Dataset/Utils/
 !utils/
