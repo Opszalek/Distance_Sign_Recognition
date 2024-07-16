@@ -18,6 +18,7 @@
 !Dataset/Utils/
 !utils/
 !utils/MixNet/
+!utils/Pico_Light_Control/
 
 # Specific files in directories
 !image_processing/*.py
@@ -29,3 +30,4 @@
 !Dataset/Utils/label_extractor.py
 !utils/utils.py
 !utils/MixNet/*
+!utils/Pico_Light_Control/*
