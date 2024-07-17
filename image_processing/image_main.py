@@ -5,6 +5,7 @@ import cv2
 import pytesseract
 from image_processing.text_detection import TextDetection
 from image_processing.text_recognition import TextRecognition
+import os
 import sys
 # Variables and paths
 path_to_model = '../Models/Sign_recognition/model_1.pt'
@@ -20,61 +21,22 @@ text_det = TextRecognition()
 cap = cv2.VideoCapture(path_to_video)  #Filmik
 
 
-# Load test image
-# image = cv2.imread('../TESTS/img.png')  #load test image so we can test without camera
-
-
-# @timeit # decorator to measure time
-
-# -----------------Functions---from---OCR----------------#
-def ocr_text(image):
-    return pytesseract.image_to_string(image)
-
-
 model = YOLO(path_to_model)
-@timeit
-def test_main():
-    imagero = cv2.imread(path_to_image)
-    signs = sign_rec.process_image(imagero)
-    cv2.imshow('im14age', signs[0][0])
-    text_images = text_rec.detect_text(signs[0][0])
-    print(text_images)
-    # cv2.imshow('ima12ge', text_images[0])
-    if text_images:
-        cv2.imshow('ima325ge', text_images[0])
-        sign_text = text_det.predict_text(text_images[0])
-        print(sign_text)
-    # cv2.imshow('image', signs[0])
-    # cv2.waitKey(0)
-test_main()
-sys.exit()
+
+path='/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/images'
 while True:
     if not test_image:
         ret, image = cap.read()
         if not ret:
             break
-    # results = model.track(image, persist=True, tracker='bytetrack.yaml')
-    #
-    # # Visualize the results on the frame
-    # annotated_frame = results[0].plot()
-    #
-    # # Display the annotated frame
-    # annotated_frame = cv2.resize(annotated_frame, (640, 640))
-    # cv2.imshow("YOLOv8 Tracking", annotated_frame)
-    #
-    # # Break the loop if 'q' is pressed
-    # cv2.waitKey(0)
-    imagero = cv2.imread(path_to_image)
-    signs = sign_rec.process_image(imagero)
-    cv2.imshow('im14age', signs[0][0])
-    text_images = text_rec.detect_text(signs[0][0])
-    print(text_images)
-    # cv2.imshow('ima12ge', text_images[0])
-    if text_images:
-        cv2.imshow('ima325ge', text_images[0])
-        sign_text = text_det.predict_text(text_images[0])
-        print(sign_text)
-    # cv2.imshow('image', signs[0])
+# for picture in os.listdir(path):
+#     image = cv2.imread(path + '/'+picture)
+
+    signs, results = sign_rec.process_image(image, show_signs=False)
+    text_images = text_rec.detect_handler(signs)
+    numer2 = 0
+    sign_text = text_det.predict_handler(text_images)
+    print(sign_text)
     cv2.waitKey(0)
 
 cap.release()

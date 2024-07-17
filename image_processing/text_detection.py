@@ -10,7 +10,6 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 project_root = os.path.abspath(os.path.join(base_dir, '..'))
 mixnet_dir = os.path.join(project_root, 'utils', 'MixNet')
 
-
 module_paths = [
     project_root,
     mixnet_dir
@@ -31,9 +30,11 @@ def timeit(func):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        print(f'{func.__name__} took {end-start} seconds to run')
+        print(f'{func.__name__} took {end - start} seconds to run')
         return result
+
     return wrapper
+
 
 class TextDetection:
     def __init__(self):
@@ -48,7 +49,6 @@ class TextDetection:
         self.model.to(cfg.device)
         self.model.eval()
 
-
     def preprocess_image(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         self.original_shape = image.shape[:2]
@@ -58,7 +58,6 @@ class TextDetection:
         image /= np.array(cfg.stds)
         image = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0).to(cfg.device)
         return image
-
 
     def save_cropped_regions(self, img, b_boxes, output_dir, file):
         # function to save cropped regions of the image for debugging purposes
@@ -71,7 +70,6 @@ class TextDetection:
             y1 = int(y1 / cfg.test_size[0] * self.original_shape[0])
             x2 = int(x2 / cfg.test_size[1] * self.original_shape[1])
             y2 = int(y2 / cfg.test_size[0] * self.original_shape[0])
-
 
             cropped_text = img[y1:y2, x1:x2]
 
@@ -115,6 +113,13 @@ class TextDetection:
             detection_image, bounding_boxes = self.img_visualize(preprocessed_image, output_dict, image)
             cropped_texts = self.return_cropped_regions(image, bounding_boxes)
             return cropped_texts
+
+    def detect_handler(self, images):
+        cropped_texts = []
+        for image in images:
+            cropped_texts.extend(self.detect_text(image))
+        return cropped_texts
+
 
 @timeit
 def main(image_path, output_dir, file):
