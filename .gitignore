@@ -17,11 +17,17 @@
 !Dataset/
 !Dataset/Utils/
 !utils/
+!utils/MixNet/
+!utils/Pico_Light_Control/
 
 # Specific files in directories
 !image_processing/*.py
+!Models/download_models.sh
+!Models/README.md
 !Models/Sign_recognition/README.md
 !Models/Text_detection/README.md
 !Models/Text_recognition/README.md
 !Dataset/Utils/label_extractor.py
 !utils/utils.py
+!utils/MixNet/*
+!utils/Pico_Light_Control/*
