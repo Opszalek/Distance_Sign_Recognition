@@ -16,3 +16,5 @@ pycocotools>=2.0.7
 ultralytics>=8.1.47
 scikit-image>=0.14.2
 scipy>=1.1.0
+paddlepaddle>=2.6.1
+paddleocr>=2.8.1
