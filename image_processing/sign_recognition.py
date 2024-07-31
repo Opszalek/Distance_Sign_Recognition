@@ -1,13 +1,15 @@
-import numpy as np
 from ultralytics import YOLO
 import cv2
+from image_processing import sign_tracker
 
 
 class SignRecognition(YOLO):
     def __init__(self, model_path, path_to_save_cropped='../TESTS/cropped', **kwargs):
+        #tracker
+        self.tracker = sign_tracker.SignTracker()
         super().__init__(model_path)
         self.path_to_save_cropped = path_to_save_cropped
-
+        self.sign_number = 250  #TODO:create number reader from dict
         self.path_to_save_images = kwargs.get('path_to_save_images', '../TESTS/images')
         self.show_images = kwargs.get('show_images', False)
         self.save_images = kwargs.get('save_images', False)
@@ -19,12 +21,18 @@ class SignRecognition(YOLO):
 
     def save_cropped_signs(self, signs, results, gps=None):
         for sign, result in zip(signs, results):
-            crop, (score, class_id) = sign, result
+            crop, (x, y, w, h, score, class_id) = sign, result
             score = round(score, 2)
-            if gps:
-                cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-{score}_cl-{class_id}_gps-{gps}.png', crop)
-            else:
-                cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-{score}_cl-{class_id}.png', crop)
+            if x > 2048 - 700:  #TODO: delete it, just for testing
+                if gps:
+                    cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-{score}_cl-{class_id}_gps-{gps}.png', crop)
+                else:
+                    cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-nr{self.sign_number}.png', crop)
+                    #add blur to image
+                    crop = cv2.GaussianBlur(crop, (7, 7), 0)
+                    cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-nr{self.sign_number}_blurred.png', crop)
+
+                self.sign_number += 1
 
     def save_image(self, image):  # TODO: Add unique name for each image
         cv2.imwrite(f'{self.path_to_save_images}/image.png', image)
@@ -51,16 +59,12 @@ class SignRecognition(YOLO):
             x, y, w, h, score, class_id = box
             crop = image[int(y):int(h), int(x):int(w)]
             signs.append(crop)
-            results.append([score, class_id])
+            results.append(box)
         return signs, results
 
     @staticmethod
     def return_bboxes(results):
-        bboxes = []
-        for detection in results.boxes.data.tolist():
-            x, y, w, h, score, class_id = detection
-            bboxes.append((x, y, w, h, score, class_id))
-        return bboxes
+        return results.boxes.data.tolist()
 
     def args_handler(self, image, bboxes, signs, results):
         if self.save_images:
@@ -90,5 +94,12 @@ class SignRecognition(YOLO):
         output = self.predict_sign(image)
         bboxes = self.return_bboxes(output)
         signs, results = self.crop_signs(image, bboxes)
+        #self.tracker.handle_bboxes(list(zip(signs, results)))  #tutaj ogarnąć co przekzawtac
+        signs, results = self.tracker.handle_bboxes(list(zip(signs, results)))
+        if len(signs) > 0:
+            cv2.imshow('imaaaffage', signs[0])
+            print(results[0])
+            cv2.waitKey(0)
+        self.tracker.draw_bboxes(image)
         self.args_handler(image, bboxes, signs, results)
         return signs, results
