@@ -30,10 +30,6 @@ class Sign:
     def increase_last_seen(self):
         self.last_seen += 1
 
-    def update_bbox(self, bbox):
-        self.bbox = bbox
-        self.last_seen = 0
-
     def update_sign(self, new_sign):
         self.sign_img, (x, y, w, h, score, class_id) = new_sign
         self.bbox = (x, y, w, h)
@@ -82,34 +78,44 @@ class SignTracker:
             self.signs[self.ID] = Sign(sign, self.ID)
             self.ID += 1
 
-    @timeit
-    def handle_bboxes(self, new_sign_list):
+    def add_signs(self, signs):
+        for sign in signs:
+            self.add_sign(sign)
+
+    def remove_signs(self, matched_indices, current_signs):
         selected_signs = []
         selected_results = []
-        current_signs = list(self.signs.values())
-        if len(self.signs) == 0:
-            for new_sign in new_sign_list:
-                self.add_sign(new_sign)
-        else:
-            matched_indices = set()
-            for new_sign in new_sign_list:
-                is_matched = False
-                for sign in current_signs:
-                    #TODO: include roi in the calculation
-                    if self.check_IOU(sign, new_sign) > self.IOU_threshold:
-                        sign.update_sign(new_sign)
-                        matched_indices.add(sign.ID)
-                        is_matched = True
-                        break
-                if not is_matched:
-                    self.add_sign(new_sign)
+        for sign in current_signs:
+            if sign.ID not in matched_indices:
+                sign.increase_last_seen()
+                if sign.last_seen > self.no_detection_threshold:
+                    selected_signs.append(sign.return_sign())
+                    selected_results.append(sign.return_results())
+                    del self.signs[sign.ID]
+        return selected_signs, selected_results
+
+    def match_signs(self, new_signs, current_signs):
+        matched_indices = set()
+        for new_sign in new_signs:
+            is_matched = False
             for sign in current_signs:
-                if sign.ID not in matched_indices:
-                    sign.increase_last_seen()
-                    if sign.last_seen > self.no_detection_threshold:
-                        selected_signs.append(sign.return_sign())
-                        selected_results.append(sign.return_results())
-                        del self.signs[sign.ID]
+                if self.check_IOU(sign, new_sign) > self.IOU_threshold:
+                    sign.update_sign(new_sign)
+                    matched_indices.add(sign.ID)
+                    is_matched = True
+                    break
+            if not is_matched:
+                self.add_sign(new_sign)
+        return matched_indices
+
+    @timeit
+    def handle_bboxes(self, new_sign_list):
+        if not self.signs:
+            self.add_signs(new_sign_list)
+            return [], []
+        current_signs = list(self.signs.values())
+        matched_indices = self.match_signs(new_sign_list, current_signs)
+        selected_signs, selected_results = self.remove_signs(matched_indices, current_signs)
         return selected_signs, selected_results
 
     def draw_bboxes(self, image_):
