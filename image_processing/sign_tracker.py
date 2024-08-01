@@ -4,8 +4,8 @@ from utils.utils import timeit
 
 class Sign:
     def __init__(self, new_sign, ID):
-        sign_img, (x, y, w, h, score, class_id) = new_sign
-        self.bbox = (x, y, w, h)
+        sign_img, (x1, y1, x2, y2, score, class_id) = new_sign
+        self.bbox = (x1, y1, x2, y2)
         self.score = score
         self.class_id = class_id
         self.last_seen = 0
@@ -21,7 +21,7 @@ class Sign:
         return self.bbox[0], self.bbox[1], self.bbox[2], self.bbox[3], self.score, self.class_id
 
     def compare_images(self, new_sign):
-        sign_img, (x, y, w, h, score, class_id) = new_sign
+        sign_img, _ = new_sign
         for prev_image in self.prev_images:
             if cv2.absdiff(prev_image, sign_img).mean() < 10:
                 return True
@@ -31,8 +31,8 @@ class Sign:
         self.last_seen += 1
 
     def update_sign(self, new_sign):
-        self.sign_img, (x, y, w, h, score, class_id) = new_sign
-        self.bbox = (x, y, w, h)
+        self.sign_img, (x1, y1, x2, y2, score, class_id) = new_sign
+        self.bbox = (x1, y1, x2, y2)
         self.score = score
         self.last_seen = 0
         if self.class_id != class_id:
@@ -45,19 +45,17 @@ class Sign:
 class SignTracker:
     def __init__(self):
         self.signs = {}
-        # self.last_sign = None
-        # self.current_sign_list = []
         self.ID = 1
-        # self.no_detection_counter = 0
         self.no_detection_threshold = 3
         self.IOU_threshold = 0.6
         self.score_threshold = 0.6
-        # self.ROI = [1024, 1024]
+        self.image_size = [2048, 2048]
+        self.ROI = [1024, 1600, 60, 60]  #x1,y1,x_offset,y_offset
 
     @staticmethod
     def return_bbox(sign):
-        _, (x, y, w, h, score, class_id) = sign
-        return x, y, w, h
+        _, (x1, y1, x2, y2, score, class_id) = sign
+        return x1, y1, x2, y2
 
     def check_IOU(self, sign1, sign2):
         x1, y1, w1, h1 = sign1.get_bbox()
@@ -73,8 +71,10 @@ class SignTracker:
         return iou
 
     def add_sign(self, sign):
-        _, (x, y, w, h, score, class_id) = sign
-        if score > self.score_threshold:
+        _, (x1, y1, x2, y2, score, class_id) = sign
+        if (score > self.score_threshold
+                and sign[1][0] > self.image_size[0] - self.ROI[0]
+                and sign[1][1] > self.image_size[1] - self.ROI[1]):
             self.signs[self.ID] = Sign(sign, self.ID)
             self.ID += 1
 
@@ -94,10 +94,18 @@ class SignTracker:
                     del self.signs[sign.ID]
         return selected_signs, selected_results
 
+    def outside_ROI(self, sign):
+        x1, y1, x2, y2 = self.return_bbox(sign)
+        if x2 > self.image_size[0] - self.ROI[2]:
+            return True
+        return False
+
     def match_signs(self, new_signs, current_signs):
         matched_indices = set()
         for new_sign in new_signs:
             is_matched = False
+            if self.outside_ROI(new_sign):
+                continue
             for sign in current_signs:
                 if self.check_IOU(sign, new_sign) > self.IOU_threshold:
                     sign.update_sign(new_sign)
@@ -108,8 +116,7 @@ class SignTracker:
                 self.add_sign(new_sign)
         return matched_indices
 
-    @timeit
-    def handle_bboxes(self, new_sign_list):
+    def handle_tracking(self, new_sign_list):
         if not self.signs:
             self.add_signs(new_sign_list)
             return [], []
@@ -120,10 +127,13 @@ class SignTracker:
 
     def draw_bboxes(self, image_):
         image = image_.copy()
+        cv2.rectangle(image, (self.image_size[0] - self.ROI[0], self.image_size[1] - self.ROI[1]),
+                      (self.image_size[0], self.image_size[1]), (255, 0, 0), 2)
         for sign in self.signs.values():
-            x, y, w, h = sign.get_bbox()
-            cv2.rectangle(image, (int(x), int(y)), (int(w), int(h)), (0, 0, 255), 2)
-            cv2.putText(image, f'{sign.ID}', (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 3,
+            x1, y1, x2, y2 = sign.get_bbox()
+            print(x1, y1)
+            cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+            cv2.putText(image, f'{sign.ID}', (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 3,
                         (255, 0, 0), 5)
         image = cv2.resize(image, (640, 640))
         cv2.imshow('debug_image', image)
