@@ -21,9 +21,11 @@ class SignRecognition(YOLO):
 
     def save_cropped_signs(self, signs, results, gps=None):
         for sign, result in zip(signs, results):
-            crop, (x, y, w, h, score, class_id) = sign, result
+            crop, (x1, y1, x2, y2, score, class_id) = sign, result
+            print("stop2")
+            print(f'x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}')
             score = round(score, 2)
-            if x > 2048 - 700:  #TODO: delete it, just for testing
+            if x1 > 2048 - 700:  #TODO: delete it, just for testing
                 if gps:
                     cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-{score}_cl-{class_id}_gps-{gps}.png', crop)
                 else:
@@ -41,11 +43,11 @@ class SignRecognition(YOLO):
     def show_image(image, bboxes):
         image_ = image.copy()
         for box in bboxes:
-            x, y, w, h, score, class_id = box
-            cv2.rectangle(image_, (int(x), int(y)), (int(w), int(h)), (0, 255, 0), 2)
-            cv2.putText(image_, f'{round(score, 2)} {class_id}', (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 3,
+            x1, y1, x2, y2, score, class_id = box
+            cv2.rectangle(image_, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+            cv2.putText(image_, f'{round(score, 2)} {class_id}', (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 3,
                         (0, 0, 255), 5)
-            cv2.rectangle(image_, (int(x), int(y)), (int(w), int(h)), (0, 255, 0), 2)
+            cv2.rectangle(image_, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         image_ = cv2.resize(image_, (640, 640))
         cv2.imshow('image', image_)
         if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -56,8 +58,8 @@ class SignRecognition(YOLO):
         signs = []
         results = []
         for box in bboxes:
-            x, y, w, h, score, class_id = box
-            crop = image[int(y):int(h), int(x):int(w)]
+            x1, y1, x2, y2, score, class_id = box
+            crop = image[int(y1):int(y2), int(x1):int(x2)]
             signs.append(crop)
             results.append(box)
         return signs, results
@@ -94,12 +96,11 @@ class SignRecognition(YOLO):
         output = self.predict_sign(image)
         bboxes = self.return_bboxes(output)
         signs, results = self.crop_signs(image, bboxes)
-        #self.tracker.handle_bboxes(list(zip(signs, results)))  #tutaj ogarnąć co przekzawtac
-        signs, results = self.tracker.handle_bboxes(list(zip(signs, results)))
-        if len(signs) > 0:
-            cv2.imshow('imaaaffage', signs[0])
-            print(results[0])
+        selected_signs, selected_results = self.tracker.handle_tracking(list(zip(signs, results)))
+        if len(selected_signs) > 0:
+            cv2.imshow('image_', selected_signs[0])
+            print(selected_results[0])
             cv2.waitKey(0)
         self.tracker.draw_bboxes(image)
-        self.args_handler(image, bboxes, signs, results)
-        return signs, results
+        self.args_handler(image, bboxes, selected_signs, selected_results)
+        return selected_signs, selected_results
