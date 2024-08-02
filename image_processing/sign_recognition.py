@@ -4,13 +4,11 @@ from image_processing import sign_tracker
 
 
 class SignRecognition(YOLO):
-    def __init__(self, model_path, path_to_save_cropped='../TESTS/cropped', **kwargs):
-        #tracker
-        self.tracker = sign_tracker.SignTracker()
+    def __init__(self, model_path, **kwargs):
         super().__init__(model_path)
-        self.path_to_save_cropped = path_to_save_cropped
         self.sign_number = 250  #TODO:create number reader from dict
         self.path_to_save_images = kwargs.get('path_to_save_images', '../TESTS/images')
+        self.path_to_save_cropped = kwargs.get('path_to_save_cropped', '../TESTS/cropped')
         self.show_images = kwargs.get('show_images', False)
         self.save_images = kwargs.get('save_images', False)
         self.save_cropped = kwargs.get('save_cropped', False)
@@ -50,8 +48,6 @@ class SignRecognition(YOLO):
             cv2.rectangle(image_, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         image_ = cv2.resize(image_, (640, 640))
         cv2.imshow('image', image_)
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
 
     @staticmethod
     def crop_signs(image, bboxes):
@@ -79,28 +75,20 @@ class SignRecognition(YOLO):
             self.show_cropped_signs(signs)
 
     @staticmethod
-    def show_cropped_signs(signs):
+    def show_cropped_signs(signs):#TODO: delete it from here and add to main
         numer = 0
         for sign in signs:
             numer += 1
             cv2.imshow(f'Sign: {numer}', sign)
 
-    def process_image(self, image, show_signs=False):
+    def process_image(self, image):
         """
         Process image and return cropped signs
         :param image: image to process
-        :param show_signs: if True show cropped signs
-        :return: list of cropped signs
+        :return: list of cropped signs and results
         """
-        self.show_signs = show_signs
         output = self.predict_sign(image)
         bboxes = self.return_bboxes(output)
         signs, results = self.crop_signs(image, bboxes)
-        selected_signs, selected_results = self.tracker.handle_tracking(list(zip(signs, results)))
-        if len(selected_signs) > 0:
-            cv2.imshow('image_', selected_signs[0])
-            print(selected_results[0])
-            cv2.waitKey(0)
-        self.tracker.draw_bboxes(image)
-        self.args_handler(image, bboxes, selected_signs, selected_results)
-        return selected_signs, selected_results
+        self.args_handler(image, bboxes, signs, results)
+        return signs, results

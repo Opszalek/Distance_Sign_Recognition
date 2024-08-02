@@ -5,10 +5,14 @@ class PaddleOCR_sign:
     def __init__(self):
         self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
         # font path for drawing text on image
-        self.font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+        self.font_path = '../Models/DejaVuSans-Bold.ttf'
 
-    def predict_text(self, image):
-        return self.ocr.ocr(image, cls=True)
+    def predict_text(self, images):
+        texts = []
+        for image in images:
+            result = self.ocr.ocr(image, cls=True)
+            texts.append(result)
+        return texts
 
     def predict_and_draw(self, image):
         result = self.predict_text(image)
