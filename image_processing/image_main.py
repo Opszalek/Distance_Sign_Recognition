@@ -12,9 +12,13 @@ import os
 class SignTextRecognitionSystem:
     def __init__(self, path_to_model,
                  show_images=True, save_cropped=True, ocr='paddle', **kwargs):
-        self.results_path = kwargs.get('results_path', '../Dataset/output/')
-        self.crops_path = kwargs.get('crops_path', '../Dataset/crops/')
-        self.frames_path = kwargs.get('frames_path', '../Dataset/frames/')
+        self.results_path = kwargs.get('results_path', '../Dataset/output')
+        self.crops_path = kwargs.get('crops_path', '../Dataset/crops')
+        self.frames_path = kwargs.get('frames_path', '../Dataset/frame')
+
+        self.save_results_ = kwargs.get('save_results', False)
+        self.show_images = show_images
+        self.save_cropped = save_cropped
 
         self.sign_recognition = SignRecognition(
             path_to_model, path_to_save_cropped=self.crops_path, show_images=show_images, save_cropped=save_cropped)
@@ -24,7 +28,7 @@ class SignTextRecognitionSystem:
         self.text_det_rec_paddle = PaddleOCR_sign()
         self.text_det_rec_easy = EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=ocr)
-
+        self.cropped_sign_number = self.return_last_number()
 
     def detect_signs(self, image):
         return self.sign_recognition.process_image(image)
@@ -38,26 +42,28 @@ class SignTextRecognitionSystem:
     def track_signs(self, signs, results, image=None):
         return self.tracker.handle_tracking(list(zip(signs, results)))
 
-    @staticmethod
-    def display_sign_text(signs, texts):
+    def annotate_sign(self, sign, text_data):
+        sign_ = sign.copy()
+        if text_data and text_data[0] is not None:
+            for text_info in text_data[0]:
+                if text_info:
+                    box, (detected_text, confidence) = text_info
+                    for i in range(len(box)):
+                        cv2.line(sign_, tuple(map(int, box[i])), tuple(map(int, box[(i + 1) % len(box)])),
+                                 (0, 255, 0),
+                                 2)
+                    cv2.putText(sign_, f"{detected_text}:{confidence:.3f}",
+                                (int(box[0][0]), int(box[0][1]) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        return sign_
+
+    def display_sign_text(self, signs, texts):
         for sign, text_data in zip(signs, texts):
-            if text_data and text_data[0] is not None:
-                for text_info in text_data[0]:
-                    if text_info:
-                        box, (detected_text, confidence) = text_info
-                        for i in range(len(box)):
-                            cv2.line(sign, tuple(map(int, box[i])), tuple(map(int, box[(i + 1) % len(box)])),
-                                     (0, 255, 0),
-                                     2)
-                        cv2.putText(sign, f"{detected_text}:{confidence:.3f}",
-                                    (int(box[0][0]), int(box[0][1]) - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-            else:
-                print("No text detected or invalid data structure.")
+            sign = self.annotate_sign(sign, text_data)
             cv2.imshow('Sign', sign)
 
     def return_ocr(self, ocr_type=None):
-        #OCR should have predict_text method which takes list of images and returns [bbox, (text, confidence)]
+        # OCR should have predict_text method which takes list of images and returns [bbox, (text, confidence)]
         if ocr_type == 'paddle':
             return self.text_det_rec_paddle
         elif ocr_type == 'easy':
@@ -65,22 +71,54 @@ class SignTextRecognitionSystem:
         else:
             raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
 
-    def save_results(self, image, signs, texts):
-        pass
+    def return_last_number(self):
+        # TODO: add reading last number from file
+        os.makedirs(os.path.join(self.results_path, 'labels'),
+                    exist_ok=True)
+        os.makedirs(os.path.join(self.results_path, 'images_annotated'),
+                    exist_ok=True)
+        os.makedirs(os.path.join(self.results_path, 'images'),
+                    exist_ok=True)
+
+        return 1
+
+    def save_results(self, signs, texts):
+        text_to_save = []
+        for sign, text_data in zip(signs, texts):
+            annotated_sign = self.annotate_sign(sign, text_data)
+            if text_data[0] is not None:
+                for text_info in text_data[0]:
+                    box, (detected_text, confidence) = text_info
+                    text_to_save.append([box, detected_text, confidence])
+
+            with open(self.results_path + f'/labels/results_{self.cropped_sign_number}.txt', 'w') as f:
+                f.write(f"sign_{self.cropped_sign_number}.png\n")
+                for line in text_to_save:
+                    f.write(f"{line}\n")
+
+            cv2.imwrite(self.results_path +
+                        f'/images_annotated/sign_annotated_{self.cropped_sign_number}.png', annotated_sign)
+            cv2.imwrite(self.results_path + f'/images/sign_{self.cropped_sign_number}.png', sign)
+            self.cropped_sign_number += 1
+
+    def args_handler(self, image, signs, texts):
+        if self.save_results_:
+            self.save_results(signs, texts)
 
     def process_image(self, image):
         signs, results = self.detect_signs(image)
         selected_signs, selected_results = self.track_signs(signs, results)
         self.tracker.draw_bboxes(image)
         if len(selected_signs) == 0:
-            print("No signs detected.")
             return
-        print(f"Number of signs detected: {len(signs)}")
         text_ = self.ocr.predict_text(selected_signs)
         self.display_sign_text(selected_signs, text_)
+        #TODO: fix that args_handler works everytime instead only when len(selected_signs) > 0
+        self.save_results_ = True
+        self.args_handler(image, selected_signs, text_)
 
 
-def get_images_from_directory(directory_path):
+def get_images_from_directory(directory_path): # TODO: check if it works
     for filename in os.listdir(directory_path):
         if filename.endswith(('.png', '.jpg', '.jpeg')):
             yield cv2.imread(os.path.join(directory_path, filename))
