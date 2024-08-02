@@ -5,8 +5,12 @@ class EasyOCR_sign:
     def __init__(self):
         self.reader = easyocr.Reader(['en'])
 
-    def predict_text(self, image):
-        return self.reader.readtext(image, allowlist='0123456789')
+    def predict_text(self, images):
+        texts = []
+        for image in images:
+            result = self.reader.readtext(image, allowlist='0123456789')
+            texts.append(result)
+        return texts
 
     def predict_and_draw(self, image):
         result = self.predict_text(image)
