@@ -7,7 +7,7 @@ from image_processing.PaddleOCR_detection_recognition import PaddleOCR_sign
 from image_processing.EasyOCR_detection_recognition import EasyOCR_sign
 from image_processing import sign_tracker
 import os
-
+from datetime import datetime
 
 class SignTextRecognitionSystem:
     def __init__(self, path_to_model,
@@ -20,6 +20,10 @@ class SignTextRecognitionSystem:
         self.show_images = show_images
         self.save_cropped = save_cropped
 
+        self.date_hour = datetime.now().strftime("%d-%m-%Y_%H:%M")
+        self.create_out_dir()
+        self.cropped_sign_number = 1
+
         self.sign_recognition = SignRecognition(
             path_to_model, path_to_save_cropped=self.crops_path, show_images=show_images, save_cropped=save_cropped)
         self.tracker = sign_tracker.SignTracker()
@@ -28,7 +32,6 @@ class SignTextRecognitionSystem:
         self.text_det_rec_paddle = PaddleOCR_sign()
         self.text_det_rec_easy = EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=ocr)
-        self.cropped_sign_number = self.return_last_number()
 
     def detect_signs(self, image):
         return self.sign_recognition.process_image(image)
@@ -71,16 +74,17 @@ class SignTextRecognitionSystem:
         else:
             raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
 
-    def return_last_number(self):
-        # TODO: add reading last number from file
+    def create_out_dir(self):
+        os.makedirs(os.path.join(self.results_path, self.date_hour), exist_ok=True)
+
+        self.results_path = os.path.join(self.results_path, self.date_hour)
+
         os.makedirs(os.path.join(self.results_path, 'labels'),
                     exist_ok=True)
         os.makedirs(os.path.join(self.results_path, 'images_annotated'),
                     exist_ok=True)
         os.makedirs(os.path.join(self.results_path, 'images'),
                     exist_ok=True)
-
-        return 1
 
     def save_results(self, signs, texts):
         text_to_save = []
