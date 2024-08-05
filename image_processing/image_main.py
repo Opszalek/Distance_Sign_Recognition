@@ -9,23 +9,26 @@ from image_processing import sign_tracker
 import os
 from datetime import datetime
 
+
 class SignTextRecognitionSystem:
     def __init__(self, path_to_model,
-                 show_images=True, save_cropped=True, ocr='paddle', **kwargs):
+                 show_images=True, ocr='paddle', **kwargs):
         self.results_path = kwargs.get('results_path', '../Dataset/output')
         self.crops_path = kwargs.get('crops_path', '../Dataset/crops')
         self.frames_path = kwargs.get('frames_path', '../Dataset/frame')
 
-        self.save_results_ = kwargs.get('save_results', False)
+        self.save_results = kwargs.get('save_results', False)
+        self.save_frames = kwargs.get('save_frames', False)
+        self.show_signs = kwargs.get('show_signs', False)
         self.show_images = show_images
-        self.save_cropped = save_cropped
 
         self.date_hour = datetime.now().strftime("%d-%m-%Y_%H:%M")
         self.create_out_dir()
         self.cropped_sign_number = 1
+        self.frame_number = 1
 
         self.sign_recognition = SignRecognition(
-            path_to_model, path_to_save_cropped=self.crops_path, show_images=show_images, save_cropped=save_cropped)
+            path_to_model, path_to_save_cropped=self.crops_path, show_images=show_images)
         self.tracker = sign_tracker.SignTracker()
         self.text_rec = TextDetection()
         self.text_det = TextRecognition()
@@ -45,7 +48,12 @@ class SignTextRecognitionSystem:
     def track_signs(self, signs, results, image=None):
         return self.tracker.handle_tracking(list(zip(signs, results)))
 
-    def annotate_sign(self, sign, text_data):
+    def save_frame(self, image):
+        cv2.imwrite(self.results_path + f'/frames/frame_{self.frame_number}.png', image)
+        self.frame_number += 1
+
+    @staticmethod
+    def annotate_sign(sign, text_data):
         sign_ = sign.copy()
         if text_data and text_data[0] is not None:
             for text_info in text_data[0]:
@@ -75,18 +83,24 @@ class SignTextRecognitionSystem:
             raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
 
     def create_out_dir(self):
-        os.makedirs(os.path.join(self.results_path, self.date_hour), exist_ok=True)
+        if self.save_results or self.save_frames:
+            os.makedirs(os.path.join(self.results_path, self.date_hour), exist_ok=True)
 
-        self.results_path = os.path.join(self.results_path, self.date_hour)
+            self.results_path = os.path.join(self.results_path, self.date_hour)
 
-        os.makedirs(os.path.join(self.results_path, 'labels'),
-                    exist_ok=True)
-        os.makedirs(os.path.join(self.results_path, 'images_annotated'),
-                    exist_ok=True)
-        os.makedirs(os.path.join(self.results_path, 'images'),
-                    exist_ok=True)
+        if self.save_results:
+            os.makedirs(os.path.join(self.results_path, 'labels'),
+                        exist_ok=True)
+            os.makedirs(os.path.join(self.results_path, 'signs_annotated'),
+                        exist_ok=True)
+            os.makedirs(os.path.join(self.results_path, 'signs'),
+                        exist_ok=True)
 
-    def save_results(self, signs, texts):
+        if self.save_frames:
+            os.makedirs(os.path.join(self.results_path, 'frames'),
+                        exist_ok=True)
+
+    def save_result(self, signs, texts):
         text_to_save = []
         for sign, text_data in zip(signs, texts):
             annotated_sign = self.annotate_sign(sign, text_data)
@@ -101,28 +115,33 @@ class SignTextRecognitionSystem:
                     f.write(f"{line}\n")
 
             cv2.imwrite(self.results_path +
-                        f'/images_annotated/sign_annotated_{self.cropped_sign_number}.png', annotated_sign)
-            cv2.imwrite(self.results_path + f'/images/sign_{self.cropped_sign_number}.png', sign)
+                        f'/signs_annotated/sign_annotated_{self.cropped_sign_number}.png', annotated_sign)
+            cv2.imwrite(self.results_path + f'/signs/sign_{self.cropped_sign_number}.png', sign)
             self.cropped_sign_number += 1
 
     def args_handler(self, image, signs, texts):
-        if self.save_results_:
-            self.save_results(signs, texts)
+        if self.save_results and len(signs) > 0:
+            self.save_result(signs, texts)
+        if self.save_frames:
+            self.save_frame(image)
+            cv2.imwrite(self.frames_path + f'/frame_{self.cropped_sign_number}.png', image)
+        if self.show_signs:
+            self.display_sign_text(signs, texts)
 
-    def process_image(self, image):
+    def process_frame(self, image):
         signs, results = self.detect_signs(image)
         selected_signs, selected_results = self.track_signs(signs, results)
         self.tracker.draw_bboxes(image)
-        if len(selected_signs) == 0:
-            return
         text_ = self.ocr.predict_text(selected_signs)
-        self.display_sign_text(selected_signs, text_)
-        #TODO: fix that args_handler works everytime instead only when len(selected_signs) > 0
-        self.save_results_ = True
         self.args_handler(image, selected_signs, text_)
 
+    def process_image(self, image):
+        signs, results = self.detect_signs(image)
+        text_ = self.ocr.predict_text(signs)
+        self.args_handler(image, signs, text_)
 
-def get_images_from_directory(directory_path): # TODO: check if it works
+
+def get_images_from_directory(directory_path):
     for filename in os.listdir(directory_path):
         if filename.endswith(('.png', '.jpg', '.jpeg')):
             yield cv2.imread(os.path.join(directory_path, filename))
@@ -139,24 +158,28 @@ def get_images_from_video(video_path):
 
 
 def __main__():
-    path_to_model = '../Models/Sign_recognition/model_1.pt'
-    path_to_save_cropped = '../TESTS/cropped'
-    image_source_type = 'video'  # Change to 'directory' if using directory of images
-    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
-    # image_source_path = '/path/to/your/image/directory'
+    path_to_model = '../Models/Sign_recognition/yolov10m_epochs_30_batch_16_dropout_0.1.pt'
+    image_source_type = 'video'  # choose 'video' or 'directory' video - for video, directory - for images
+    video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
+    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/images'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(path_to_model)
+    sign_text_recognition_system = SignTextRecognitionSystem(path_to_model,
+                                                             save_results=True, show_signs=True,
+                                                             show_images=True, save_frames=False,
+                                                             ocr='paddle')
 
     if image_source_type == 'video':
-        image_generator = get_images_from_video(image_source_path)
+        image_generator = get_images_from_video(video_source_path)
+        for image in image_generator:
+            sign_text_recognition_system.process_frame(image)
+            cv2.waitKey(1)
     elif image_source_type == 'directory':
         image_generator = get_images_from_directory(image_source_path)
+        for image in image_generator:
+            sign_text_recognition_system.process_image(image)
+            cv2.waitKey(0)
     else:
         raise ValueError("Invalid image source type. Choose 'video' or 'directory'.")
-
-    for image in image_generator:
-        sign_text_recognition_system.process_image(image)
-        cv2.waitKey(1)
 
     cv2.destroyAllWindows()
 

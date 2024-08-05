@@ -6,36 +6,11 @@ from image_processing import sign_tracker
 class SignRecognition(YOLO):
     def __init__(self, model_path, **kwargs):
         super().__init__(model_path)
-        self.sign_number = 250  #TODO:create number reader from dict
-        self.path_to_save_images = kwargs.get('path_to_save_images', '../TESTS/images')
-        self.path_to_save_cropped = kwargs.get('path_to_save_cropped', '../TESTS/cropped')
         self.show_images = kwargs.get('show_images', False)
-        self.save_images = kwargs.get('save_images', False)
-        self.save_cropped = kwargs.get('save_cropped', False)
         self.show_signs = kwargs.get('show_signs', False)
 
     def predict_sign(self, data):
         return self.predict(source=data)[0]
-
-    def save_cropped_signs(self, signs, results, gps=None):
-        for sign, result in zip(signs, results):
-            crop, (x1, y1, x2, y2, score, class_id) = sign, result
-            print("stop2")
-            print(f'x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}')
-            score = round(score, 2)
-            if x1 > 2048 - 700:  #TODO: delete it, just for testing
-                if gps:
-                    cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-{score}_cl-{class_id}_gps-{gps}.png', crop)
-                else:
-                    cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-nr{self.sign_number}.png', crop)
-                    #add blur to image
-                    crop = cv2.GaussianBlur(crop, (7, 7), 0)
-                    cv2.imwrite(f'{self.path_to_save_cropped}/sign_sc-nr{self.sign_number}_blurred.png', crop)
-
-                self.sign_number += 1
-
-    def save_image(self, image):  # TODO: Add unique name for each image
-        cv2.imwrite(f'{self.path_to_save_images}/image.png', image)
 
     @staticmethod
     def show_image(image, bboxes):
@@ -65,17 +40,13 @@ class SignRecognition(YOLO):
         return results.boxes.data.tolist()
 
     def args_handler(self, image, bboxes, signs, results):
-        if self.save_images:
-            self.save_image(image)
-        if self.save_cropped:
-            self.save_cropped_signs(signs, results)
         if self.show_images:
             self.show_image(image, bboxes)
         if self.show_signs:
             self.show_cropped_signs(signs)
 
     @staticmethod
-    def show_cropped_signs(signs):#TODO: delete it from here and add to main
+    def show_cropped_signs(signs):
         numer = 0
         for sign in signs:
             numer += 1
