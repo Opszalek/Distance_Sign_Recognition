@@ -131,7 +131,6 @@ class SignTracker:
                       (self.image_size[0], self.image_size[1]), (255, 0, 0), 2)
         for sign in self.signs.values():
             x1, y1, x2, y2 = sign.get_bbox()
-            print(x1, y1)
             cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
             cv2.putText(image, f'{sign.ID}', (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 3,
                         (255, 0, 0), 5)
