@@ -11,30 +11,50 @@ from datetime import datetime
 
 
 class SignTextRecognitionSystem:
-    def __init__(self, path_to_model,
-                 show_images=True, ocr='paddle', **kwargs):
+    def __init__(self, **kwargs):
         self.results_path = kwargs.get('results_path', '../Dataset/output')
-        self.crops_path = kwargs.get('crops_path', '../Dataset/crops')
         self.frames_path = kwargs.get('frames_path', '../Dataset/frame')
 
         self.save_results = kwargs.get('save_results', False)
         self.save_frames = kwargs.get('save_frames', False)
         self.show_signs = kwargs.get('show_signs', False)
-        self.show_images = show_images
+        self.model_type = kwargs.get('model_type', 'yolov8')
+        self.ocr_type = kwargs.get('ocr', 'paddle')
+        self.show_images = kwargs.get('show_images', False)
 
         self.date_hour = datetime.now().strftime("%d-%m-%Y_%H:%M")
         self.create_out_dir()
         self.cropped_sign_number = 1
         self.frame_number = 1
 
-        self.sign_recognition = SignRecognition(
-            path_to_model, path_to_save_cropped=self.crops_path, show_images=show_images)
+        self.sign_recognition = self.return_model(model_type=self.model_type)
         self.tracker = sign_tracker.SignTracker()
         self.text_rec = TextDetection()
         self.text_det = TextRecognition()
         self.text_det_rec_paddle = PaddleOCR_sign()
         self.text_det_rec_easy = EasyOCR_sign()
-        self.ocr = self.return_ocr(ocr_type=ocr)
+        self.ocr = self.return_ocr(ocr_type=self.ocr_type)
+
+    def return_ocr(self, ocr_type=None):
+        # OCR should have predict_text method which takes list of images and returns [bbox, (text, confidence)]
+        if ocr_type == 'paddle':
+            return self.text_det_rec_paddle
+        elif ocr_type == 'easy':
+            return self.text_det_rec_easy
+        else:
+            raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
+
+    def return_model(self, model_type=None):
+        # Here you can add more models for sign recognition
+        if model_type == 'yolov8':
+            path_to_model = '../Models/Sign_recognition/yolov8n_epochs_30_batch_16_dropout_0.1.pt'
+        elif model_type == 'yolov10':
+            path_to_model = '../Models/Sign_recognition/yolov10m_tiny_epochs_30_batch_16_dropout_0.1.pt'
+        elif model_type == 'yolov8n':
+            path_to_model = '../Models/Sign_recognition/v8n_v2.pt'
+        else:
+            return 1
+        return SignRecognition(path_to_model, show_images=self.show_images)
 
     def detect_signs(self, image):
         return self.sign_recognition.process_image(image)
@@ -72,15 +92,6 @@ class SignTextRecognitionSystem:
         for sign, text_data in zip(signs, texts):
             sign = self.annotate_sign(sign, text_data)
             cv2.imshow('Sign', sign)
-
-    def return_ocr(self, ocr_type=None):
-        # OCR should have predict_text method which takes list of images and returns [bbox, (text, confidence)]
-        if ocr_type == 'paddle':
-            return self.text_det_rec_paddle
-        elif ocr_type == 'easy':
-            return self.text_det_rec_easy
-        else:
-            raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
 
     def create_out_dir(self):
         if self.save_results or self.save_frames:
@@ -158,12 +169,11 @@ def get_images_from_video(video_path):
 
 
 def __main__():
-    path_to_model = '../Models/Sign_recognition/yolov10m_epochs_30_batch_16_dropout_0.1.pt'
     image_source_type = 'video'  # choose 'video' or 'directory' video - for video, directory - for images
     video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
     image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/images'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(path_to_model,
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8',
                                                              save_results=True, show_signs=True,
                                                              show_images=True, save_frames=False,
                                                              ocr='paddle')
