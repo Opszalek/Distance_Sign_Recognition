@@ -7,6 +7,7 @@
 !README.md
 !requirements.txt
 !LICENSE
+!setup.py
 
 # Specific directories
 !image_processing/
@@ -29,5 +30,4 @@
 !Models/Text_recognition/README.md
 !Dataset/Utils/label_extractor.py
 !utils/utils.py
-!utils/MixNet/*
 !utils/Pico_Light_Control/*
