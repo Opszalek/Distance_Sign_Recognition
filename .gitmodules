@@ -1,6 +1,3 @@
-[submodule "utils/MixNet"]
-	path = utils/MixNet
-	url = https://github.com/marcelq11/MixNet.git
 [submodule "utils/Pico_Light_Control"]
 	path = utils/Pico_Light_Control
 	url = https://github.com/marcelq11/Pico_Light_Control.git
