@@ -1,10 +1,10 @@
 from utils.utils import timeit
 from image_processing.sign_recognition import SignRecognition
 import cv2
-from image_processing.text_detection import TextDetection
-from image_processing.text_recognition import TextRecognition
+# from image_processing.text_detection import TextDetection
+# from image_processing.text_recognition import TextRecognition
 from image_processing.PaddleOCR_detection_recognition import PaddleOCR_sign
-from image_processing.EasyOCR_detection_recognition import EasyOCR_sign
+#from image_processing.EasyOCR_detection_recognition import EasyOCR_sign # comments for fast test in ros2
 from image_processing import sign_tracker
 import os
 from datetime import datetime
@@ -29,10 +29,10 @@ class SignTextRecognitionSystem:
 
         self.sign_recognition = self.return_model(model_type=self.model_type)
         self.tracker = sign_tracker.SignTracker()
-        self.text_rec = TextDetection()
-        self.text_det = TextRecognition()
+        # self.text_rec = TextDetection()
+        # self.text_det = TextRecognition()
         self.text_det_rec_paddle = PaddleOCR_sign()
-        self.text_det_rec_easy = EasyOCR_sign()
+        self.text_det_rec_easy = 1#EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=self.ocr_type)
 
     def return_ocr(self, ocr_type=None):
