@@ -14,6 +14,7 @@ class SignTextRecognitionSystem:
     def __init__(self, **kwargs):
         self.results_path = kwargs.get('results_path', '../Dataset/output')
         self.frames_path = kwargs.get('frames_path', '../Dataset/frame')
+        self.models_path = kwargs.get('models_path', '../Models')
 
         self.save_results = kwargs.get('save_results', False)
         self.save_frames = kwargs.get('save_frames', False)
@@ -47,13 +48,16 @@ class SignTextRecognitionSystem:
     def return_model(self, model_type=None):
         # Here you can add more models for sign recognition
         if model_type == 'yolov8':
-            path_to_model = '../Models/Sign_recognition/yolov8n_epochs_30_batch_16_dropout_0.1.pt'
+            path_to_model = ('Sign_recognition/yolov8n_epochs_30_batch_16_dropout_0.1/content/runs/detect/train3'
+                             '/weights/best.pt')
         elif model_type == 'yolov10':
-            path_to_model = '../Models/Sign_recognition/yolov10m_tiny_epochs_30_batch_16_dropout_0.1.pt'
+            path_to_model = '/Sign_recognition/yolov10m_tiny_epochs_30_batch_16_dropout_0.1.pt'
         elif model_type == 'yolov8n':
-            path_to_model = '../Models/Sign_recognition/v8n_v2.pt'
+            path_to_model = '/Sign_recognition/v8n_v2.pt'
         else:
             return 1
+
+        path_to_model = os.path.join(self.models_path, path_to_model)
         return SignRecognition(path_to_model, show_images=self.show_images)
 
     def detect_signs(self, image):
