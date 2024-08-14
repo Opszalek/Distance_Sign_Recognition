@@ -7,16 +7,23 @@ class PaddleOCR_sign:
         # font path for drawing text on image
         self.font_path = '../Models/DejaVuSans-Bold.ttf'
 
+    @staticmethod
+    def refactored_output_type(result):
+        while isinstance(result, list) and len(result) == 1 and isinstance(result[0], list):
+            result = result[0]
+        return result
+
     def predict_text(self, images):
         texts = []
         for image in images:
             result = self.ocr.ocr(image, cls=True)
-            texts.append(result)
+            texts.extend(result)
         return texts
 
     def predict_and_draw(self, image):
         result = self.predict_text(image)
-        img = cv2.imread(image)
+        print(f"Result for : {result}")
+        img = image
         if result is None or len(result) == 0 or result[0] is None:
             print(f"No text detected in image: {image}")
             return None

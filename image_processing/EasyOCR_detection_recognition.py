@@ -5,11 +5,20 @@ class EasyOCR_sign:
     def __init__(self):
         self.reader = easyocr.Reader(['en'])
 
+    @staticmethod
+    def refactored_output(results):
+        refactored_result = []
+        for item in results:
+            if isinstance(item, tuple):
+                bbox, text, confidence = item
+                refactored_result.append([bbox, (text, confidence)])
+        return refactored_result
+
     def predict_text(self, images):
         texts = []
         for image in images:
             result = self.reader.readtext(image, allowlist='0123456789')
-            texts.append(result)
+            texts.append(self.refactored_output(result))
         return texts
 
     def predict_and_draw(self, image):
