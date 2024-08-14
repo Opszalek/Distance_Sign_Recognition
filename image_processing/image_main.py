@@ -4,7 +4,7 @@ import cv2
 # from image_processing.text_detection import TextDetection
 # from image_processing.text_recognition import TextRecognition
 from image_processing.PaddleOCR_detection_recognition import PaddleOCR_sign
-#from image_processing.EasyOCR_detection_recognition import EasyOCR_sign # comments for fast test in ros2
+from image_processing.EasyOCR_detection_recognition import EasyOCR_sign
 from image_processing import sign_tracker
 import os
 from datetime import datetime
@@ -33,7 +33,7 @@ class SignTextRecognitionSystem:
         # self.text_rec = TextDetection()
         # self.text_det = TextRecognition()
         self.text_det_rec_paddle = PaddleOCR_sign()
-        self.text_det_rec_easy = 1#EasyOCR_sign()
+        self.text_det_rec_easy = EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=self.ocr_type)
 
     def return_ocr(self, ocr_type=None):
@@ -54,6 +54,8 @@ class SignTextRecognitionSystem:
             path_to_model = '/Sign_recognition/yolov10m_tiny_epochs_30_batch_16_dropout_0.1.pt'
         elif model_type == 'yolov8n':
             path_to_model = '/Sign_recognition/v8n_v2.pt'
+        elif model_type == 'yolov9s':
+            path_to_model = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Models/Test_dic/Sign_recognition/yolov9s_epochs_30_batch_16_dropout_0.1 (1)/content/runs/detect/train2/weights/best.pt'
         else:
             return 1
 
@@ -79,8 +81,8 @@ class SignTextRecognitionSystem:
     @staticmethod
     def annotate_sign(sign, text_data):
         sign_ = sign.copy()
-        if text_data and text_data[0] is not None:
-            for text_info in text_data[0]:
+        if text_data is not None:
+            for text_info in text_data:
                 if text_info:
                     box, (detected_text, confidence) = text_info
                     for i in range(len(box)):
@@ -119,8 +121,8 @@ class SignTextRecognitionSystem:
         text_to_save = []
         for sign, text_data in zip(signs, texts):
             annotated_sign = self.annotate_sign(sign, text_data)
-            if text_data[0] is not None:
-                for text_info in text_data[0]:
+            if text_data is not None:
+                for text_info in text_data:
                     box, (detected_text, confidence) = text_info
                     text_to_save.append([box, detected_text, confidence])
 
@@ -152,12 +154,15 @@ class SignTextRecognitionSystem:
 
     def process_image(self, image):
         signs, results = self.detect_signs(image)
+        # signs, selected_results = self.track_signs(signs, results)
+        # self.tracker.draw_bboxes(image)
         text_ = self.ocr.predict_text(signs)
         self.args_handler(image, signs, text_)
 
 
 def get_images_from_directory(directory_path):
-    for filename in os.listdir(directory_path):
+    sorted_files = sorted(os.listdir(directory_path), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+    for filename in sorted_files:
         if filename.endswith(('.png', '.jpg', '.jpeg')):
             yield cv2.imread(os.path.join(directory_path, filename))
 
@@ -173,20 +178,25 @@ def get_images_from_video(video_path):
 
 
 def __main__():
+    frame_number = 1
     image_source_type = 'video'  # choose 'video' or 'directory' video - for video, directory - for images
+    video_source_path = '/home/opszalek/sign_cropped/Sign_cropped/s15_1_cropped.mp4'
     video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
-    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/images'
+    # video_source_path = '/media/opszalek/C074672F7467277E/Users/Dawid/Videos/WonderFox Soft/HD Video Converter Factory Pro/OutputVideo/s11_2.mp4'
+    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/12-08-2024_13:26/frames'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8',
-                                                             save_results=True, show_signs=True,
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov9s',
+                                                             save_results=False, show_signs=True,
                                                              show_images=True, save_frames=False,
-                                                             ocr='paddle')
+                                                             ocr='easy')
 
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)
         for image in image_generator:
-            sign_text_recognition_system.process_frame(image)
-            cv2.waitKey(1)
+            if frame_number > 2:
+                sign_text_recognition_system.process_frame(image)
+                cv2.waitKey(0)
+            frame_number += 1
     elif image_source_type == 'directory':
         image_generator = get_images_from_directory(image_source_path)
         for image in image_generator:
