@@ -1,13 +1,15 @@
 from utils.utils import timeit
-from image_processing.sign_recognition import SignRecognition
 import cv2
 # from image_processing.text_detection import TextDetection
 # from image_processing.text_recognition import TextRecognition
+from image_processing.sign_recognition import SignRecognition
+from image_processing.sign_segmentation import SignSegmentation
 from image_processing.PaddleOCR_detection_recognition import PaddleOCR_sign
 from image_processing.EasyOCR_detection_recognition import EasyOCR_sign
 from image_processing import sign_tracker
 import os
 from datetime import datetime
+import numpy as np
 
 
 class SignTextRecognitionSystem:
@@ -19,16 +21,22 @@ class SignTextRecognitionSystem:
         self.save_results = kwargs.get('save_results', False)
         self.save_frames = kwargs.get('save_frames', False)
         self.show_signs = kwargs.get('show_signs', False)
+        self.show_segmentation_masks = kwargs.get('show_segmentation_masks', False)
+        self.segmentation_type = kwargs.get('segmentation_type', 'yolov9c-seg')
         self.model_type = kwargs.get('model_type', 'yolov8')
         self.ocr_type = kwargs.get('ocr', 'paddle')
         self.show_images = kwargs.get('show_images', False)
+        self.dst_std = 50
+        self.std_hysteresis = 10
+        self.bbox_height_threshold = 0.2
 
         self.date_hour = datetime.now().strftime("%d-%m-%Y_%H:%M")
         self.create_out_dir()
         self.cropped_sign_number = 1
         self.frame_number = 1
 
-        self.sign_recognition = self.return_model(model_type=self.model_type)
+        self.sign_detection = self.return_detection_model(model_type=self.model_type)
+        self.sign_segmentation = self.return_segmentation_model(model_type=self.segmentation_type)
         self.tracker = sign_tracker.SignTracker()
         # self.text_rec = TextDetection()
         # self.text_det = TextRecognition()
@@ -37,7 +45,7 @@ class SignTextRecognitionSystem:
         self.ocr = self.return_ocr(ocr_type=self.ocr_type)
 
     def return_ocr(self, ocr_type=None):
-        # OCR should have predict_text method which takes list of images and returns [bbox, (text, confidence)]
+        # OCR should have predict_text method which takes list of images and returns [[[bbox, (text, confidence)],[bbox, (text, confidence)]]]
         if ocr_type == 'paddle':
             return self.text_det_rec_paddle
         elif ocr_type == 'easy':
@@ -45,7 +53,7 @@ class SignTextRecognitionSystem:
         else:
             raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
 
-    def return_model(self, model_type=None):
+    def return_detection_model(self, model_type=None):
         # Here you can add more models for sign recognition
         if model_type == 'yolov8':
             path_to_model = ('Sign_recognition/yolov8n_epochs_30_batch_16_dropout_0.1/content/runs/detect/train3'
@@ -62,14 +70,20 @@ class SignTextRecognitionSystem:
         path_to_model = os.path.join(self.models_path, path_to_model)
         return SignRecognition(path_to_model, show_images=self.show_images)
 
+    def return_segmentation_model(self, model_type):
+        # Here you can add more models for sign segmentation
+        if model_type == 'yolov9c-seg':
+            path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
+        elif model_type == 'yolov9c-seg-extended':
+            path_to_model = '/Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_marc.pt'
+        else:
+            return 1
+
+        path_to_model = os.path.join(self.models_path, path_to_model)
+        return SignSegmentation(path_to_model, show_masks=self.show_segmentation_masks)
+
     def detect_signs(self, image):
-        return self.sign_recognition.process_image(image)
-
-    def detect_text_Paddle(self, sign):
-        return self.text_det_rec_paddle.predict_text(sign)
-
-    def detect_text_Easy(self, sign):
-        return self.text_det_rec_easy.predict_text(sign)
+        return self.sign_detection.process_image(image)
 
     def track_signs(self, signs, results, image=None):
         return self.tracker.handle_tracking(list(zip(signs, results)))
@@ -77,6 +91,16 @@ class SignTextRecognitionSystem:
     def save_frame(self, image):
         cv2.imwrite(self.results_path + f'/frames/frame_{self.frame_number}.png', image)
         self.frame_number += 1
+
+    def auto_contrast(self, image):
+        contrast = np.std(image)
+        # TODO: Fix when the brightness is too high
+        if self.dst_std + self.std_hysteresis > contrast > self.dst_std:
+            return image
+        alpha = self.dst_std / contrast
+        beta = 0
+        adjusted = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+        return adjusted
 
     @staticmethod
     def annotate_sign(sign, text_data):
@@ -93,6 +117,31 @@ class SignTextRecognitionSystem:
                                 (int(box[0][0]), int(box[0][1]) - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         return sign_
+
+    def check_text_bboxes(self, texts, sign_shape):
+        if texts:
+            for text in texts:
+                box, _ = text
+                if box[3][1] - box[1][1] > sign_shape[0] * self.bbox_height_threshold:
+                    return False
+        return True
+
+    def handle_text_detection(self, signs):
+        text_data = []
+        new_signs = []
+        for sign in signs:
+            adjusted_sign = self.auto_contrast(sign)
+            texts = self.ocr.predict_text(adjusted_sign)
+            if texts is None or not self.check_text_bboxes(texts, sign.shape):
+                straight_sign = self.sign_segmentation.return_straight_sign(sign)
+                adjusted_straight_sign = self.auto_contrast(straight_sign)
+                texts = self.ocr.predict_text(adjusted_straight_sign)
+                new_signs.append(adjusted_straight_sign)
+            else:
+                new_signs.append(adjusted_sign)
+            text_data.append(texts)
+
+        return text_data, new_signs
 
     def display_sign_text(self, signs, texts):
         for sign, text_data in zip(signs, texts):
@@ -149,14 +198,14 @@ class SignTextRecognitionSystem:
         signs, results = self.detect_signs(image)
         selected_signs, selected_results = self.track_signs(signs, results)
         self.tracker.draw_bboxes(image)
-        text_ = self.ocr.predict_text(selected_signs)
+        text_, signs = self.handle_text_detection(selected_signs)
         self.args_handler(image, selected_signs, text_)
 
     def process_image(self, image):
         signs, results = self.detect_signs(image)
         # signs, selected_results = self.track_signs(signs, results)
-        # self.tracker.draw_bboxes(image)
-        text_ = self.ocr.predict_text(signs)
+        # self.tracker.draw_bboxes(image)'
+        text_, signs = self.handle_text_detection(signs)
         self.args_handler(image, signs, text_)
 
 
@@ -183,12 +232,12 @@ def __main__():
     video_source_path = '/home/opszalek/sign_cropped/Sign_cropped/s15_1_cropped.mp4'
     video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
     # video_source_path = '/media/opszalek/C074672F7467277E/Users/Dawid/Videos/WonderFox Soft/HD Video Converter Factory Pro/OutputVideo/s11_2.mp4'
-    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/12-08-2024_13:26/frames'
+    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/05-08-2024_10:08!!!!!/images'
 
     sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov9s',
                                                              save_results=False, show_signs=True,
                                                              show_images=True, save_frames=False,
-                                                             ocr='easy')
+                                                             ocr='paddle')
 
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)
