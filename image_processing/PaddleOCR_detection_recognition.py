@@ -7,18 +7,9 @@ class PaddleOCR_sign:
         # font path for drawing text on image
         self.font_path = '../Models/DejaVuSans-Bold.ttf'
 
-    @staticmethod
-    def refactored_output_type(result):
-        while isinstance(result, list) and len(result) == 1 and isinstance(result[0], list):
-            result = result[0]
-        return result
-
-    def predict_text(self, images):
-        texts = []
-        for image in images:
-            result = self.ocr.ocr(image, cls=True)
-            texts.extend(result)
-        return texts
+    def predict_text(self, image):
+        result = self.ocr.ocr(image, cls=True)
+        return result[0]
 
     def predict_and_draw(self, image):
         result = self.predict_text(image)

@@ -7,6 +7,8 @@ class EasyOCR_sign:
 
     @staticmethod
     def refactored_output(results):
+        if not results:
+            return None
         refactored_result = []
         for item in results:
             if isinstance(item, tuple):
@@ -14,12 +16,9 @@ class EasyOCR_sign:
                 refactored_result.append([bbox, (text, confidence)])
         return refactored_result
 
-    def predict_text(self, images):
-        texts = []
-        for image in images:
-            result = self.reader.readtext(image, allowlist='0123456789')
-            texts.append(self.refactored_output(result))
-        return texts
+    def predict_text(self, image):
+        result = self.reader.readtext(image, allowlist='0123456789')
+        return self.refactored_output(result)
 
     def predict_and_draw(self, image):
         result = self.predict_text(image)
