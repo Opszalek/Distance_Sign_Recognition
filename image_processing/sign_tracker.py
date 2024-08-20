@@ -1,4 +1,5 @@
 import cv2
+import pywt
 
 from utils.utils import timeit
 import numpy as np
@@ -11,9 +12,9 @@ class Sign:
         self.class_id = class_id
         self.last_seen = 0
         self.ID = ID
-        self.prev_images = []
-        self.prev_images.append(sign_img)
+        self.sharpness_func = Sign.laplacian_score
         self.sign_img = sign_img
+        self.sharpness_score = self.sharpness_func(self.sign_img)
         self.last_bboxes = []
         self.last_bboxes.append(self.bbox)
         self.distance_delta = [0, 0]
@@ -24,18 +25,56 @@ class Sign:
     def return_results(self):
         return self.bbox[0], self.bbox[1], self.bbox[2], self.bbox[3], self.score, self.class_id
 
-    def compare_images(self, new_sign):
-        sign_img, _ = new_sign
-        for prev_image in self.prev_images:
-            if cv2.absdiff(prev_image, sign_img).mean() < 10:
-                return True
-        return False
+#DEFINIED SHARPNESS SCORE FUNCTIONS---------------------------------------------------
+    @staticmethod
+    def laplacian_score(image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+        variance = laplacian.var()
+        return variance
+
+    @staticmethod
+    def sobel_score(image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+        sobel_magnitude = np.sqrt(sobel_x ** 2 + sobel_y ** 2)
+        variance = sobel_magnitude.var()
+        return variance
+
+    @staticmethod
+    def wavelet_score(image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        coeffs = pywt.wavedec2(gray, 'db1', level=2)
+        # coeffs[0] is the approximation coefficients (LL)
+        # coeffs[1], coeffs[2], ... are the detail coefficients for each level
+        details = coeffs[1:]  # Get only the detail coefficients
+        score = 0
+        for level in details:
+            LH, HL, HH = level
+            score += np.mean(np.abs(HH))
+        return score
+
+    @staticmethod
+    def canny_score(image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 100, 200)
+        score = np.sum(edges) / (gray.shape[0] * gray.shape[1])
+        return score
+#--------------------------------------------------------------------------------------
+
+    def compare_sharpness_handler(self, new_sign_img):
+        new_sharpness_score = self.sharpness_func(new_sign_img)
+        if new_sharpness_score >= self.sharpness_score:
+            self.sharpness_score = new_sharpness_score
+            self.sign_img = new_sign_img
 
     def increase_last_seen(self):
         self.last_seen += 1
 
     def update_sign(self, new_sign, distance_delta):
-        self.sign_img, (x1, y1, x2, y2, score, class_id) = new_sign
+        new_sign_image, (x1, y1, x2, y2, score, class_id) = new_sign
+        self.compare_sharpness_handler(new_sign_image)
         self.distance_delta = distance_delta
         self.bbox = (x1, y1, x2, y2)
         self.last_bboxes.append(self.bbox)
@@ -61,6 +100,7 @@ class SignTracker:
         self.width_expansion_factor = 3.0
         self.height_expansion_factor = 1.35
         self.curr_image = None # DEBUG TODO: remove
+        self.debug_mode = False
 
     @staticmethod
     def return_bbox(sign):
@@ -94,12 +134,15 @@ class SignTracker:
         inter_height = max(0, y2_inter - y1_inter)
         inter_area = inter_width * inter_height
 
-        # image = self.curr_image.copy()
-        # cv2.rectangle(image, (int(x1_1), int(y1_1)), (int(x1_1+w1_ext), int(y1_1+h1_ext)), (0, 0, 255), 2)
-        # cv2.rectangle(image, (int(x1_2), int(y1_2)), (int(x1_2+w2), int(y1_2+h2)), (0, 255, 255), 2)
-        # cv2.rectangle(image, (int(x1_inter), int(y1_inter)), (int(x2_inter), int(y2_inter)), (255, 255, 0), 3)
-        # image = cv2.resize(image, (640, 640))
-        # cv2.imshow(f'debug_image1111', image)
+        if self.debug_mode:
+            image = self.curr_image.copy()
+            if inter_area != 0:
+                cv2.rectangle(image, (int(x1_1), int(y1_1)), (int(x1_1+w1_ext), int(y1_1+h1_ext)), (0, 0, 255), 3)
+                cv2.rectangle(image, (int(x1_2), int(y1_2)), (int(x1_2+w2), int(y1_2+h2)), (0, 255, 255), 3)
+                cv2.rectangle(image, (int(x1_1), int(y1_1)), (int(x2_1), int(y2_1)), (0, 255, 0), 4)
+                cv2.rectangle(image, (int(x1_inter), int(y1_inter)), (int(x2_inter), int(y2_inter)), (255, 255, 0), 4)
+                image = cv2.resize(image, (640, 640))
+                cv2.imshow(f'debug_tracking', image)
 
         area_bbox2 = w2 * h2
 
@@ -189,10 +232,9 @@ class SignTracker:
             self.last_bbox = (x1, y1, x2, y2)
             cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
             cv2.putText(image, f'{sign.ID}', (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 3,
-                        (255, 0, 0), 5)
+                        (0, 255, 0), 5)
 
         image = cv2.resize(image, (640, 640))
         cv2.imshow('debug_image', image)
         if cv2.waitKey(25) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
-
