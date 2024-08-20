@@ -1,13 +1,12 @@
 from ultralytics import YOLO
 import cv2
-from image_processing import sign_tracker
-
 
 class SignRecognition(YOLO):
     def __init__(self, model_path, **kwargs):
         super().__init__(model_path)
         self.show_images = kwargs.get('show_images', False)
         self.show_signs = kwargs.get('show_signs', False)
+        self.proba_threshold = kwargs.get('proba_threshold', 0.4)
 
     def predict_sign(self, data):
         return self.predict(source=data)[0]
@@ -24,12 +23,13 @@ class SignRecognition(YOLO):
         image_ = cv2.resize(image_, (640, 640))
         cv2.imshow('image', image_)
 
-    @staticmethod
-    def crop_signs(image, bboxes):
+    def crop_signs(self, image, bboxes):
         signs = []
         results = []
         for box in bboxes:
             x1, y1, x2, y2, score, class_id = box
+            if score < self.proba_threshold:
+                continue
             crop = image[int(y1):int(y2), int(x1):int(x2)]
             signs.append(crop)
             results.append(box)
