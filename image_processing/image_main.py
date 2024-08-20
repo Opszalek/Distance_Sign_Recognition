@@ -1,7 +1,5 @@
 from utils.utils import timeit
 import cv2
-# from image_processing.text_detection import TextDetection
-# from image_processing.text_recognition import TextRecognition
 from image_processing.sign_recognition import SignRecognition
 from image_processing.sign_segmentation import SignSegmentation
 from image_processing.PaddleOCR_detection_recognition import PaddleOCR_sign
@@ -25,6 +23,7 @@ class SignTextRecognitionSystem:
         self.segmentation_type = kwargs.get('segmentation_type', 'yolov9c-seg')
         self.model_type = kwargs.get('model_type', 'yolov8')
         self.ocr_type = kwargs.get('ocr', 'paddle')
+        self.detection_type = kwargs.get('detection_type', 'normal')
         self.show_images = kwargs.get('show_images', False)
         self.dst_std = 50
         self.std_hysteresis = 10
@@ -38,8 +37,6 @@ class SignTextRecognitionSystem:
         self.sign_detection = self.return_detection_model(model_type=self.model_type)
         self.sign_segmentation = self.return_segmentation_model(model_type=self.segmentation_type)
         self.tracker = sign_tracker.SignTracker()
-        # self.text_rec = TextDetection()
-        # self.text_det = TextRecognition()
         self.text_det_rec_paddle = PaddleOCR_sign()
         self.text_det_rec_easy = EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=self.ocr_type)
@@ -64,6 +61,9 @@ class SignTextRecognitionSystem:
             path_to_model = '/Sign_recognition/v8n_v2.pt'
         elif model_type == 'yolov9s':
             path_to_model = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Models/Test_dic/Sign_recognition/yolov9s_epochs_30_batch_16_dropout_0.1 (1)/content/runs/detect/train2/weights/best.pt'
+        elif model_type == 'test':
+            path_to_model = '/home/opszalek/Downloads/models/yolov10l_epochs_60_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
+
         else:
             return 1
 
@@ -126,9 +126,9 @@ class SignTextRecognitionSystem:
                     return False
         return True
 
-    def handle_text_detection(self, signs):
+    def detect_text_contrast_straight(self, signs):
         text_data = []
-        new_signs = []
+        adjusted_signs = []
         for sign in signs:
             adjusted_sign = self.auto_contrast(sign)
             texts = self.ocr.predict_text(adjusted_sign)
@@ -136,12 +136,40 @@ class SignTextRecognitionSystem:
                 straight_sign = self.sign_segmentation.return_straight_sign(sign)
                 adjusted_straight_sign = self.auto_contrast(straight_sign)
                 texts = self.ocr.predict_text(adjusted_straight_sign)
-                new_signs.append(adjusted_straight_sign)
+                adjusted_signs.append(adjusted_straight_sign)
             else:
-                new_signs.append(adjusted_sign)
+                adjusted_signs.append(adjusted_sign)
             text_data.append(texts)
 
-        return text_data, new_signs
+        return text_data, adjusted_signs
+
+    def detect_text_contrast(self, signs):
+        text_data = []
+        adjusted_signs = []
+        for sign in signs:
+            adjusted_sign = self.auto_contrast(sign)
+            texts = self.ocr.predict_text(adjusted_sign)
+            adjusted_signs.append(adjusted_sign)
+            text_data.append(texts)
+
+        return text_data, adjusted_signs
+
+    def detect_text(self, signs):
+        text_data = []
+        for sign in signs:
+            texts = self.ocr.predict_text(sign)
+            text_data.append(texts)
+
+        return text_data, signs
+
+    def handle_text_detection(self, signs):
+        if self.detection_type == 'contrast':
+            return self.detect_text_contrast(signs)
+        elif self.detection_type == 'contrast_straight':
+            return self.detect_text_contrast_straight(signs)
+        elif self.detection_type == 'normal':
+            return self.detect_text(signs)
+
 
     def display_sign_text(self, signs, texts):
         for sign, text_data in zip(signs, texts):
@@ -190,23 +218,23 @@ class SignTextRecognitionSystem:
             self.save_result(signs, texts)
         if self.save_frames:
             self.save_frame(image)
-            cv2.imwrite(self.frames_path + f'/frame_{self.cropped_sign_number}.png', image)
         if self.show_signs:
             self.display_sign_text(signs, texts)
 
     def process_frame(self, image):
         signs, results = self.detect_signs(image)
+        self.tracker.curr_image = image.copy() #DEBUG TODO: remove
         selected_signs, selected_results = self.track_signs(signs, results)
         self.tracker.draw_bboxes(image)
-        text_, signs = self.handle_text_detection(selected_signs)
-        self.args_handler(image, selected_signs, text_)
+        text, signs_adjusted = self.handle_text_detection(selected_signs)
+        self.args_handler(image, signs_adjusted, text)
 
     def process_image(self, image):
         signs, results = self.detect_signs(image)
         # signs, selected_results = self.track_signs(signs, results)
         # self.tracker.draw_bboxes(image)'
-        text_, signs = self.handle_text_detection(signs)
-        self.args_handler(image, signs, text_)
+        text, signs_adjusted = self.handle_text_detection(signs)
+        self.args_handler(image, signs_adjusted, text)
 
 
 def get_images_from_directory(directory_path):
@@ -229,23 +257,22 @@ def get_images_from_video(video_path):
 def __main__():
     frame_number = 1
     image_source_type = 'video'  # choose 'video' or 'directory' video - for video, directory - for images
-    video_source_path = '/home/opszalek/sign_cropped/Sign_cropped/s15_1_cropped.mp4'
-    video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
-    # video_source_path = '/media/opszalek/C074672F7467277E/Users/Dawid/Videos/WonderFox Soft/HD Video Converter Factory Pro/OutputVideo/s11_2.mp4'
-    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/05-08-2024_10:08!!!!!/images'
+    # video_source_path = '/home/opszalek/sign_cropped/Sign_cropped/92_7_cropped.mp4'
+    video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/final_test/443_test.mp4'
+    # video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
+    # image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/17-08-2024_15:38/frames'
+    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov9s',
-                                                             save_results=False, show_signs=True,
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8',
+                                                             save_results=True, show_signs=True,
                                                              show_images=True, save_frames=False,
-                                                             ocr='paddle')
+                                                             ocr='paddle', detection_type='contrast')
 
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)
         for image in image_generator:
-            if frame_number > 2:
-                sign_text_recognition_system.process_frame(image)
-                cv2.waitKey(0)
-            frame_number += 1
+            sign_text_recognition_system.process_frame(image)
+            cv2.waitKey(0)
     elif image_source_type == 'directory':
         image_generator = get_images_from_directory(image_source_path)
         for image in image_generator:
