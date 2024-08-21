@@ -7,9 +7,10 @@ class SignRecognition(YOLO):
         self.show_images = kwargs.get('show_images', False)
         self.show_signs = kwargs.get('show_signs', False)
         self.proba_threshold = kwargs.get('proba_threshold', 0.4)
+        self.iou_threshold = kwargs.get('iou_threshold', 0.3)
 
     def predict_sign(self, data):
-        return self.predict(source=data)[0]
+        return self.predict(source=data, conf=self.proba_threshold)[0]
 
     @staticmethod
     def show_image(image, bboxes):
@@ -28,16 +29,38 @@ class SignRecognition(YOLO):
         results = []
         for box in bboxes:
             x1, y1, x2, y2, score, class_id = box
-            if score < self.proba_threshold:
-                continue
             crop = image[int(y1):int(y2), int(x1):int(x2)]
             signs.append(crop)
             results.append(box)
         return signs, results
 
     @staticmethod
-    def return_bboxes(results):
-        return results.boxes.data.tolist()
+    def check_iou(box1, box2):
+        x1, y1, x2, y2, _, _ = box1
+        x1_, y1_, x2_, y2_, _, _ = box2
+        xA = max(x1, x1_)
+        yA = max(y1, y1_)
+        xB = min(x2, x2_)
+        yB = min(y2, y2_)
+        interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
+        box1Area = (x2 - x1 + 1) * (y2 - y1 + 1)
+        box2Area = (x2_ - x1_ + 1) * (y2_ - y1_ + 1)
+        iou = interArea / float(box1Area + box2Area - interArea)
+        return iou
+
+    def return_unique_bboxes(self, results):
+        boxes = []
+        for box in results.boxes.data.tolist():
+            if not boxes:
+                boxes.append(box)
+            else:
+                for box_ in boxes:
+                    if self.check_iou(box, box_) < self.iou_threshold:
+                        boxes.append(box)
+                    elif box[4] > box_[4]:
+                        boxes.remove(box_)
+                        boxes.append(box)
+        return boxes
 
     def args_handler(self, image, bboxes, signs, results):
         if self.show_images:
@@ -59,7 +82,7 @@ class SignRecognition(YOLO):
         :return: list of cropped signs and results
         """
         output = self.predict_sign(image)
-        bboxes = self.return_bboxes(output)
+        bboxes = self.return_unique_bboxes(output)
         signs, results = self.crop_signs(image, bboxes)
         self.args_handler(image, bboxes, signs, results)
         return signs, results
