@@ -1,4 +1,3 @@
-from utils.utils import timeit
 import cv2
 from image_processing.sign_recognition import SignRecognition
 from image_processing.sign_segmentation import SignSegmentation
@@ -20,7 +19,7 @@ class SignTextRecognitionSystem:
         self.save_frames = kwargs.get('save_frames', False)
         self.show_signs = kwargs.get('show_signs', False)
         self.show_segmentation_masks = kwargs.get('show_segmentation_masks', False)
-        self.segmentation_type = kwargs.get('segmentation_type', 'yolov9c-seg')
+        self.segmentation_type = kwargs.get('segmentation_type', 'yolov8l-seg_cropped')
         self.model_type = kwargs.get('model_type', 'yolov8')
         self.ocr_type = kwargs.get('ocr', 'paddle')
         self.detection_type = kwargs.get('detection_type', 'normal')
@@ -52,18 +51,16 @@ class SignTextRecognitionSystem:
 
     def return_detection_model(self, model_type=None):
         # Here you can add more models for sign recognition
-        if model_type == 'yolov8':
-            path_to_model = ('Sign_recognition/yolov8n_epochs_30_batch_16_dropout_0.1/content/runs/detect/train3'
-                             '/weights/best.pt')
-        elif model_type == 'yolov10':
-            path_to_model = '/Sign_recognition/yolov10m_tiny_epochs_30_batch_16_dropout_0.1.pt'
-        elif model_type == 'yolov8n':
-            path_to_model = '/Sign_recognition/v8n_v2.pt'
+        if model_type == 'yolov8n':
+            path_to_model = 'path/to/model'
+        elif model_type == 'yolov10l':
+            path_to_model = 'path/to/model'
+        elif model_type == 'yolov9t':
+            path_to_model = 'path/to/model'
         elif model_type == 'yolov9s':
-            path_to_model = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Models/Test_dic/Sign_recognition/yolov9s_epochs_30_batch_16_dropout_0.1 (1)/content/runs/detect/train2/weights/best.pt'
-        elif model_type == 'test':
-            path_to_model = '/home/opszalek/Downloads/models/yolov10l_epochs_60_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
-
+            path_to_model = 'path/to/model'
+        elif model_type == 'yolov10n':
+            path_to_model = 'path/to/model'
         else:
             return 1
 
@@ -73,9 +70,11 @@ class SignTextRecognitionSystem:
     def return_segmentation_model(self, model_type):
         # Here you can add more models for sign segmentation
         if model_type == 'yolov9c-seg':
-            path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
+            path_to_model = 'path/to/model'
         elif model_type == 'yolov9c-seg-extended':
-            path_to_model = '/Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_marc.pt'
+            path_to_model = 'path/to/model'
+        elif model_type == 'yolov8l-seg_cropped':
+            path_to_model = 'path/to/model'
         else:
             return 1
 
@@ -85,8 +84,8 @@ class SignTextRecognitionSystem:
     def detect_signs(self, image):
         return self.sign_detection.process_image(image)
 
-    def track_signs(self, signs, results, image=None):
-        return self.tracker.handle_tracking(list(zip(signs, results)))
+    def track_signs(self, signs, results, image):
+        return self.tracker.handle_tracking(list(zip(signs, results)), image)
 
     def save_frame(self, image):
         cv2.imwrite(self.results_path + f'/frames/frame_{self.frame_number}.png', image)
@@ -94,7 +93,6 @@ class SignTextRecognitionSystem:
 
     def auto_contrast(self, image):
         contrast = np.std(image)
-        # TODO: Fix when the brightness is too high
         if self.dst_std + self.std_hysteresis > contrast > self.dst_std:
             return image
         alpha = self.dst_std / contrast
@@ -113,7 +111,7 @@ class SignTextRecognitionSystem:
                         cv2.line(sign_, tuple(map(int, box[i])), tuple(map(int, box[(i + 1) % len(box)])),
                                  (0, 255, 0),
                                  2)
-                    cv2.putText(sign_, f"{detected_text}:{confidence:.3f}",
+                    cv2.putText(sign_, f"{detected_text}",#:{confidence:.3f}",
                                 (int(box[0][0]), int(box[0][1]) - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         return sign_
@@ -126,7 +124,15 @@ class SignTextRecognitionSystem:
                     return False
         return True
 
-    def detect_text_contrast_straight(self, signs):
+    @staticmethod
+    def add_background(image):
+        h, w, _ = image.shape
+        max_size = max(h, w)
+        background = cv2.copyMakeBorder(image, 0, max_size - h, 0, max_size - w, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+
+        return cv2.resize(background, (640, 640))
+
+    def detect_text_dual(self, signs):
         text_data = []
         adjusted_signs = []
         for sign in signs:
@@ -139,6 +145,49 @@ class SignTextRecognitionSystem:
                 adjusted_signs.append(adjusted_straight_sign)
             else:
                 adjusted_signs.append(adjusted_sign)
+            text_data.append(texts)
+
+        return text_data, adjusted_signs
+
+    def detect_text_dual_extended(self, signs):
+        text_data = []
+        adjusted_signs = []
+        for sign in signs:
+            adjusted_sign = self.auto_contrast(sign)
+            texts = self.ocr.predict_text(adjusted_sign)
+            if texts is None or not self.check_text_bboxes(texts, sign.shape):
+                straight_sign = self.sign_segmentation.return_straight_sign(sign)
+                adjusted_straight_sign = self.auto_contrast(straight_sign)
+                straight_background = self.add_background(adjusted_straight_sign)
+                texts = self.ocr.predict_text(straight_background)
+                adjusted_signs.append(adjusted_straight_sign)
+            else:
+                adjusted_signs.append(adjusted_sign)
+            text_data.append(texts)
+
+        return text_data, adjusted_signs
+
+    def detect_text_contrast_straight(self, signs):
+        text_data = []
+        adjusted_signs = []
+        for sign in signs:
+            straight_sign = self.sign_segmentation.return_straight_sign(sign)
+            adjusted_straight_sign = self.auto_contrast(straight_sign)
+            texts = self.ocr.predict_text(adjusted_straight_sign)
+            adjusted_signs.append(adjusted_straight_sign)
+            text_data.append(texts)
+
+        return text_data, adjusted_signs
+
+    def detect_text_straight_extended(self, signs):
+        text_data = []
+        adjusted_signs = []
+        for sign in signs:
+            straight_sign = self.sign_segmentation.return_straight_sign(sign)
+            adjusted_straight_sign = self.auto_contrast(straight_sign)
+            straight_background = self.add_background(adjusted_straight_sign)
+            texts = self.ocr.predict_text(straight_background)
+            adjusted_signs.append(adjusted_straight_sign)
             text_data.append(texts)
 
         return text_data, adjusted_signs
@@ -165,10 +214,16 @@ class SignTextRecognitionSystem:
     def handle_text_detection(self, signs):
         if self.detection_type == 'contrast':
             return self.detect_text_contrast(signs)
-        elif self.detection_type == 'contrast_straight':
-            return self.detect_text_contrast_straight(signs)
+        elif self.detection_type == 'contrast_straighten_normal':
+            return self.detect_text_dual(signs)
+        elif self.detection_type == 'contrast_straighten_normal_background':
+            return self.detect_text_dual_extended(signs)
         elif self.detection_type == 'normal':
             return self.detect_text(signs)
+        elif self.detection_type == 'contrast_straighten':
+            return self.detect_text_contrast_straight(signs)
+        elif self.detection_type == 'contrast_straighten_background':
+            return self.detect_text_straight_extended(signs)
 
 
     def display_sign_text(self, signs, texts):
@@ -223,16 +278,13 @@ class SignTextRecognitionSystem:
 
     def process_frame(self, image):
         signs, results = self.detect_signs(image)
-        self.tracker.curr_image = image.copy() #DEBUG TODO: remove
-        selected_signs, selected_results = self.track_signs(signs, results)
-        self.tracker.draw_bboxes(image)
+        selected_signs, selected_results = self.track_signs(signs, results, image)
         text, signs_adjusted = self.handle_text_detection(selected_signs)
         self.args_handler(image, signs_adjusted, text)
+        return text
 
     def process_image(self, image):
         signs, results = self.detect_signs(image)
-        # signs, selected_results = self.track_signs(signs, results)
-        # self.tracker.draw_bboxes(image)'
         text, signs_adjusted = self.handle_text_detection(signs)
         self.args_handler(image, signs_adjusted, text)
 
@@ -253,20 +305,15 @@ def get_images_from_video(video_path):
         yield frame
     cap.release()
 
-
 def __main__():
-    frame_number = 1
     image_source_type = 'video'  # choose 'video' or 'directory' video - for video, directory - for images
-    # video_source_path = '/home/opszalek/sign_cropped/Sign_cropped/92_7_cropped.mp4'
-    video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/final_test/443_test.mp4'
-    # video_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/Videos/dzien_video3.mp4'
-    # image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/17-08-2024_15:38/frames'
-    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'
+    video_source_path = '/path/to/video.mp4'
+    image_source_path = '/path/to/directory/with/images'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8',
-                                                             save_results=True, show_signs=True,
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov10n', segmentation_type='yolov8l-seg_cropped',
+                                                             save_results=False, show_signs=True,
                                                              show_images=True, save_frames=False,
-                                                             ocr='paddle', detection_type='contrast')
+                                                             ocr='paddle', detection_type='contrast_straighten')
 
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)

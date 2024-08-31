@@ -1,23 +1,23 @@
 import cv2
 import pywt
 
-from utils.utils import timeit
 import numpy as np
 
 class Sign:
-    def __init__(self, new_sign, ID):
+    def __init__(self, new_sign, ID, use_sharpness=False):
         sign_img, (x1, y1, x2, y2, score, class_id) = new_sign
         self.bbox = (x1, y1, x2, y2)
         self.score = score
         self.class_id = class_id
         self.last_seen = 0
         self.ID = ID
-        self.sharpness_func = Sign.laplacian_score
+        self.sharpness_func = Sign.canny_score
         self.sign_img = sign_img
-        self.sharpness_score = self.sharpness_func(self.sign_img)
+        self.sharpness_score = self.sharpness_func(cv2.resize(self.sign_img, (500, 120)))
         self.last_bboxes = []
         self.last_bboxes.append(self.bbox)
         self.distance_delta = [0, 0]
+        self.use_sharpness = use_sharpness
 
     def return_sign(self):
         return self.sign_img
@@ -46,9 +46,7 @@ class Sign:
     def wavelet_score(image):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         coeffs = pywt.wavedec2(gray, 'db1', level=2)
-        # coeffs[0] is the approximation coefficients (LL)
-        # coeffs[1], coeffs[2], ... are the detail coefficients for each level
-        details = coeffs[1:]  # Get only the detail coefficients
+        details = coeffs[1:]
         score = 0
         for level in details:
             LH, HL, HH = level
@@ -74,33 +72,34 @@ class Sign:
 
     def update_sign(self, new_sign, distance_delta):
         new_sign_image, (x1, y1, x2, y2, score, class_id) = new_sign
-        self.compare_sharpness_handler(new_sign_image)
+        if self.use_sharpness:
+            self.compare_sharpness_handler(new_sign_image)
+        else:
+            self.sign_img = new_sign_image
         self.distance_delta = distance_delta
         self.bbox = (x1, y1, x2, y2)
         self.last_bboxes.append(self.bbox)
         self.score = score
         self.last_seen = 0
-        if self.class_id != class_id:
-            raise ValueError('Class ID changed')  #TODO: add handling of class_id change
 
     def get_bbox(self):
         return self.bbox
 
 
 class SignTracker:
-    def __init__(self):
+    def __init__(self, debug_mode=False):
         self.signs = {}
         self.ID = 1
         self.no_detection_threshold = 1
-        self.IOU_threshold = 0.75 #Back to 0.55
-        self.score_threshold = 0.4#Back to 0.55
+        self.IOU_threshold = 0.75 #0.55
+        self.score_threshold = 0.4#0.55
         self.image_size = [2048, 2048]
         self.ROI = [1024, 1600, 150, 60]  #x1,y1,x_offset,y_offset
         self.last_bbox = None
         self.width_expansion_factor = 3.0
         self.height_expansion_factor = 1.35
-        self.curr_image = None # DEBUG TODO: remove
-        self.debug_mode = False
+        self.curr_image = None
+        self.debug_mode = debug_mode
 
     @staticmethod
     def return_bbox(sign):
@@ -211,13 +210,17 @@ class SignTracker:
 
         return matched_indices
 
-    def handle_tracking(self, new_sign_list):
+    def handle_tracking(self, new_sign_list, image):
+        if self.debug_mode:
+            self.curr_image = image
         if not self.signs:
             self.add_signs(new_sign_list)
             return [], []
         current_signs = list(self.signs.values())
         matched_indices = self.match_signs(new_sign_list, current_signs)
         selected_signs, selected_results = self.remove_signs(matched_indices, current_signs)
+        if self.debug_mode:
+            self.draw_bboxes(self.curr_image)
         return selected_signs, selected_results
 
     def draw_bboxes(self, image_):
@@ -235,6 +238,4 @@ class SignTracker:
                         (0, 255, 0), 5)
 
         image = cv2.resize(image, (640, 640))
-        cv2.imshow('debug_image', image)
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
+        cv2.imshow('debug_tracker', image)

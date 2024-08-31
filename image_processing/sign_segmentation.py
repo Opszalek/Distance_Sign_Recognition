@@ -19,15 +19,13 @@ class SignSegmentation(YOLO):
         resized_mask = cv2.resize(mask, (image.shape[1], image.shape[0]))
 
         colored_mask = np.zeros_like(image, dtype=np.uint8)
-        colored_mask[:, :, 0] = resized_mask * 255  # Blue channel
-        colored_mask[:, :, 1] = resized_mask * 150  # Green channel
-        colored_mask[:, :, 2] = resized_mask * 150  # Red channel
+        colored_mask[:, :, 0] = resized_mask * 255
+        colored_mask[:, :, 1] = resized_mask * 150
+        colored_mask[:, :, 2] = resized_mask * 150
 
         masked_image = cv2.addWeighted(image, 1, colored_mask, 0.5, 0)
 
-        cv2.imshow('Mask', masked_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        cv2.imshow('Segmentation Mask', masked_image)
 
     def return_straight_sign(self, image):
         warped = image
