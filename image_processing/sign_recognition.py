@@ -1,3 +1,5 @@
+from tabnanny import verbose
+
 from ultralytics import YOLO
 import cv2
 
@@ -6,11 +8,11 @@ class SignRecognition(YOLO):
         super().__init__(model_path)
         self.show_images = kwargs.get('show_images', False)
         self.show_signs = kwargs.get('show_signs', False)
-        self.proba_threshold = kwargs.get('proba_threshold', 0.4)
+        self.prob_threshold = kwargs.get('prob_threshold', 0.4)
         self.iou_threshold = kwargs.get('iou_threshold', 0.3)
 
     def predict_sign(self, data):
-        return self.predict(source=data, conf=self.proba_threshold)[0]
+        return self.predict(source=data, conf=self.prob_threshold)[0]
 
     @staticmethod
     def show_image(image, bboxes):
@@ -22,9 +24,10 @@ class SignRecognition(YOLO):
                         (0, 0, 255), 5)
             cv2.rectangle(image_, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         image_ = cv2.resize(image_, (640, 640))
-        cv2.imshow('image', image_)
+        cv2.imshow('Current Frame', image_)
 
-    def crop_signs(self, image, bboxes):
+    @staticmethod
+    def crop_signs(image, bboxes):
         signs = []
         results = []
         for box in bboxes:
