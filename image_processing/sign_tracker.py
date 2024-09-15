@@ -87,7 +87,7 @@ class Sign:
 
 
 class SignTracker:
-    def __init__(self, debug_mode=False):
+    def __init__(self, debug_mode=False, enable_preview=False):
         self.signs = {}
         self.ID = 1
         self.no_detection_threshold = 1
@@ -100,6 +100,8 @@ class SignTracker:
         self.height_expansion_factor = 1.35
         self.curr_image = None
         self.debug_mode = debug_mode
+        self.enable_preview = enable_preview
+        print(f'Enable preview: {self.enable_preview}')
 
     @staticmethod
     def return_bbox(sign):
@@ -215,27 +217,38 @@ class SignTracker:
             self.curr_image = image
         if not self.signs:
             self.add_signs(new_sign_list)
-            return [], []
+            return [], [], image
         current_signs = list(self.signs.values())
         matched_indices = self.match_signs(new_sign_list, current_signs)
         selected_signs, selected_results = self.remove_signs(matched_indices, current_signs)
         if self.debug_mode:
-            self.draw_bboxes(self.curr_image)
-        return selected_signs, selected_results
+            self.show_debug(self.curr_image)
+        if self.enable_preview:
+            image = self.create_preview(image)
+        return selected_signs, selected_results, image
 
-    def draw_bboxes(self, image_):
-        image = image_.copy()
-        cv2.rectangle(image, (self.image_size[0] - self.ROI[0], self.image_size[1] - self.ROI[1]),
-                      (self.image_size[0], self.image_size[1]), (255, 0, 0), 2)
-        if self.last_bbox:
-            x1, y1, x2, y2 = self.last_bbox
-            cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+    def draw_bbox(self, image):
         for sign in self.signs.values():
             x1, y1, x2, y2 = sign.get_bbox()
             self.last_bbox = (x1, y1, x2, y2)
             cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
             cv2.putText(image, f'{sign.ID}', (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 3,
                         (0, 255, 0), 5)
+        return image
+
+    def create_preview(self, image_):
+        image = image_.copy()
+        image = self.draw_bbox(image)
+        return image
+
+    def show_debug(self, image_):
+        image = image_.copy()
+        cv2.rectangle(image, (self.image_size[0] - self.ROI[0], self.image_size[1] - self.ROI[1]),
+                      (self.image_size[0], self.image_size[1]), (255, 0, 0), 2)
+        if self.last_bbox:
+            x1, y1, x2, y2 = self.last_bbox
+            cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+        image = self.draw_bbox(image)
 
         image = cv2.resize(image, (640, 640))
         cv2.imshow('debug_tracker', image)

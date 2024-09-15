@@ -15,15 +15,20 @@ class SignTextRecognitionSystem:
         self.frames_path = kwargs.get('frames_path', '../Dataset/frame')
         self.models_path = kwargs.get('models_path', '../Models')
 
+        #Params when running the script
         self.save_results = kwargs.get('save_results', False)
         self.save_frames = kwargs.get('save_frames', False)
         self.show_signs = kwargs.get('show_signs', False)
+        self.show_images = kwargs.get('show_images', False)
         self.show_segmentation_masks = kwargs.get('show_segmentation_masks', False)
+
+        #Params for ROS2
+        self.enable_preview = kwargs.get('enable_preview', False)
+
         self.segmentation_type = kwargs.get('segmentation_type', 'yolov8l-seg_cropped')
         self.model_type = kwargs.get('model_type', 'yolov8')
         self.ocr_type = kwargs.get('ocr', 'paddle')
         self.detection_type = kwargs.get('detection_type', 'normal')
-        self.show_images = kwargs.get('show_images', False)
         self.dst_std = 50
         self.std_hysteresis = 10
         self.bbox_height_threshold = 0.2
@@ -35,7 +40,7 @@ class SignTextRecognitionSystem:
 
         self.sign_detection = self.return_detection_model(model_type=self.model_type)
         self.sign_segmentation = self.return_segmentation_model(model_type=self.segmentation_type)
-        self.tracker = sign_tracker.SignTracker()
+        self.tracker = sign_tracker.SignTracker(enable_preview=self.enable_preview)
         self.text_det_rec_paddle = PaddleOCR_sign()
         self.text_det_rec_easy = EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=self.ocr_type)
@@ -52,15 +57,15 @@ class SignTextRecognitionSystem:
     def return_detection_model(self, model_type=None):
         # Here you can add more models for sign recognition
         if model_type == 'yolov8n':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_recognition/yolov8n_epochs_60_batch_16_dropout_0.1/weights/best.pt'
         elif model_type == 'yolov10l':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_recognition/yolov10l_epochs_60_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
         elif model_type == 'yolov9t':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_recognition/yolov9t_epochs_100_batch_16_dropout_0.1/weights/best.pt'
         elif model_type == 'yolov9s':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_recognition/yolov9s_epochs_30_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
         elif model_type == 'yolov10n':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_recognition/yolov10n_epochs_30_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
         else:
             return 1
 
@@ -70,11 +75,11 @@ class SignTextRecognitionSystem:
     def return_segmentation_model(self, model_type):
         # Here you can add more models for sign segmentation
         if model_type == 'yolov9c-seg':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
         elif model_type == 'yolov9c-seg-extended':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_marc.pt'
         elif model_type == 'yolov8l-seg_cropped':
-            path_to_model = 'path/to/model'
+            path_to_model = 'Sign_segmentation/yolov8l-seg_epochs_60_batch_16_dropout_0.1_cropped/content/runs/segment/train3/weights/best.pt'
         else:
             return 1
 
@@ -278,9 +283,11 @@ class SignTextRecognitionSystem:
 
     def process_frame(self, image):
         signs, results = self.detect_signs(image)
-        selected_signs, selected_results = self.track_signs(signs, results, image)
+        selected_signs, selected_results, annotated_image = self.track_signs(signs, results, image)
         text, signs_adjusted = self.handle_text_detection(selected_signs)
         self.args_handler(image, signs_adjusted, text)
+        if self.enable_preview:
+            return annotated_image, text
         return text
 
     def process_image(self, image):
@@ -307,18 +314,21 @@ def get_images_from_video(video_path):
 
 def __main__():
     image_source_type = 'video'  # choose 'video' or 'directory' video - for video, directory - for images
-    video_source_path = '/path/to/video.mp4'
-    image_source_path = '/path/to/directory/with/images'
+    video_source_path = '/home/opszalek/ALL_PIKIETAZ_VIDEOS/TEST_MP4.mp4'#'/path/to/video.mp4'
+    image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'#'/path/to/directory/with/images'
 
     sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov10n', segmentation_type='yolov8l-seg_cropped',
-                                                             save_results=False, show_signs=True,
-                                                             show_images=True, save_frames=False,
+                                                             save_results=False, show_signs=False,
+                                                             show_images=False, save_frames=False,
+                                                             enable_preview=True,
                                                              ocr='paddle', detection_type='contrast_straighten')
 
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)
         for image in image_generator:
-            sign_text_recognition_system.process_frame(image)
+            image, text = sign_text_recognition_system.process_frame(image)
+            image = cv2.resize(image, (640, 640))
+            cv2.imshow('Preview', image)
             cv2.waitKey(0)
     elif image_source_type == 'directory':
         image_generator = get_images_from_directory(image_source_path)
