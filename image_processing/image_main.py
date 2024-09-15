@@ -287,13 +287,14 @@ class SignTextRecognitionSystem:
         text, signs_adjusted = self.handle_text_detection(selected_signs)
         self.args_handler(image, signs_adjusted, text)
         if self.enable_preview:
-            return annotated_image, text
-        return text
+            return annotated_image, signs_adjusted, text
+        return signs_adjusted, text
 
     def process_image(self, image):
         signs, results = self.detect_signs(image)
         text, signs_adjusted = self.handle_text_detection(signs)
         self.args_handler(image, signs_adjusted, text)
+        return signs_adjusted, text
 
 
 def get_images_from_directory(directory_path):
