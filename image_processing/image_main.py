@@ -287,7 +287,7 @@ class SignTextRecognitionSystem:
         text, signs_adjusted = self.handle_text_detection(selected_signs)
         self.args_handler(image, signs_adjusted, text)
         if self.enable_preview:
-            return annotated_image, signs_adjusted, text
+            return signs_adjusted, text, annotated_image
         return signs_adjusted, text
 
     def process_image(self, image):
