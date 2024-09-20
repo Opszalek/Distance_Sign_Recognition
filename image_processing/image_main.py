@@ -57,15 +57,15 @@ class SignTextRecognitionSystem:
     def return_detection_model(self, model_type=None):
         # Here you can add more models for sign recognition
         if model_type == 'yolov8n':
-            path_to_model = 'Sign_recognition/yolov8n_epochs_60_batch_16_dropout_0.1/weights/best.pt'
-        elif model_type == 'yolov10l':
-            path_to_model = 'Sign_recognition/yolov10l_epochs_60_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
+            path_to_model = 'Sign_recognition/yolo8n.pt'
         elif model_type == 'yolov9t':
-            path_to_model = 'Sign_recognition/yolov9t_epochs_100_batch_16_dropout_0.1/weights/best.pt'
+            path_to_model = 'Sign_recognition/yolov9t.pt'
         elif model_type == 'yolov9s':
-            path_to_model = 'Sign_recognition/yolov9s_epochs_30_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
+            path_to_model = 'Sign_recognition/yolov9s.pt'
         elif model_type == 'yolov10n':
-            path_to_model = 'Sign_recognition/yolov10n_epochs_30_batch_16_dropout_0.1/content/runs/detect/train/weights/best.pt'
+            path_to_model = 'Sign_recognition/yolov10n.pt'
+        elif model_type == 'yolov10l':
+            path_to_model = 'Sign_recognition/yolov10l.pt'
         else:
             return 1
 
@@ -77,9 +77,9 @@ class SignTextRecognitionSystem:
         if model_type == 'yolov9c-seg':
             path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
         elif model_type == 'yolov9c-seg-extended':
-            path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_marc.pt'
-        elif model_type == 'yolov8l-seg_cropped':
-            path_to_model = 'Sign_segmentation/yolov8l-seg_epochs_60_batch_16_dropout_0.1_cropped/content/runs/segment/train3/weights/best.pt'
+            path_to_model = 'Sign_segmentation/yolov9c-seg-extended.pt'
+        elif model_type == 'yolov8l-seg-cropped':
+            path_to_model = 'Sign_segmentation/yolov8l-seg-cropped.pt'
         else:
             return 1
 
@@ -318,7 +318,7 @@ def __main__():
     video_source_path = '/home/opszalek/ALL_PIKIETAZ_VIDEOS/TEST_MP4.mp4'#'/path/to/video.mp4'
     image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'#'/path/to/directory/with/images'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov10n', segmentation_type='yolov8l-seg_cropped',
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov10n', segmentation_type='yolov8l-seg-cropped',
                                                              save_results=False, show_signs=False,
                                                              show_images=False, save_frames=False,
                                                              enable_preview=True,
