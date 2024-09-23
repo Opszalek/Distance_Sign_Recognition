@@ -315,21 +315,19 @@ def get_images_from_video(video_path):
 
 def __main__():
     image_source_type = 'video'  # choose 'video' or 'directory' video - for video, directory - for images
-    video_source_path = '/home/opszalek/ALL_PIKIETAZ_VIDEOS/TEST_MP4.mp4'#'/path/to/video.mp4'
+    video_source_path = '/home/marcel/Distance_Sign_Recognition/Dataset/final_test/TEST_MP4.mp4'#'/path/to/video.mp4'
     image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'#'/path/to/directory/with/images'
 
     sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov10n', segmentation_type='yolov8l-seg-cropped',
-                                                             save_results=False, show_signs=False,
-                                                             show_images=False, save_frames=False,
-                                                             enable_preview=True,
+                                                             save_results=False, show_signs=True,
+                                                             show_images=True, save_frames=False,
+                                                             enable_preview=False,
                                                              ocr='paddle', detection_type='contrast_straighten')
 
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)
         for image in image_generator:
             image, text = sign_text_recognition_system.process_frame(image)
-            image = cv2.resize(image, (640, 640))
-            cv2.imshow('Preview', image)
             cv2.waitKey(0)
     elif image_source_type == 'directory':
         image_generator = get_images_from_directory(image_source_path)
