@@ -1,0 +1,1 @@
+Directory where the detection models should be stored.
