@@ -13,6 +13,7 @@
 !image_processing/
 !Models/
 !Models/Sign_recognition/
+!Models/Sign_segmentation/
 !Models/Text_detection/
 !Models/Text_recognition/
 !Dataset/
@@ -25,6 +26,7 @@
 !image_processing/*.py
 !Models/download_models.sh
 !Models/README.md
+!Models/version.txt
 !Models/Sign_recognition/README.md
 !Models/Text_detection/README.md
 !Models/Text_recognition/README.md
