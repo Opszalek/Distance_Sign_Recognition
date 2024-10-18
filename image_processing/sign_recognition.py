@@ -1,5 +1,3 @@
-from tabnanny import verbose
-
 from ultralytics import YOLO
 import cv2
 

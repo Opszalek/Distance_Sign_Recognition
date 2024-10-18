@@ -4,7 +4,7 @@ import pywt
 import numpy as np
 
 class Sign:
-    def __init__(self, new_sign, ID, use_sharpness=False):
+    def __init__(self, new_sign, ID, image, use_sharpness=False):
         sign_img, (x1, y1, x2, y2, score, class_id) = new_sign
         self.bbox = (x1, y1, x2, y2)
         self.score = score
@@ -13,6 +13,7 @@ class Sign:
         self.ID = ID
         self.sharpness_func = Sign.canny_score
         self.sign_img = sign_img
+        self.frame_img = image
         self.sharpness_score = self.sharpness_func(cv2.resize(self.sign_img, (500, 120)))
         self.last_bboxes = []
         self.last_bboxes.append(self.bbox)
@@ -21,6 +22,9 @@ class Sign:
 
     def return_sign(self):
         return self.sign_img
+
+    def return_frame(self):
+        return self.frame_img
 
     def return_results(self):
         return self.bbox[0], self.bbox[1], self.bbox[2], self.bbox[3], self.score, self.class_id
@@ -70,7 +74,7 @@ class Sign:
     def increase_last_seen(self):
         self.last_seen += 1
 
-    def update_sign(self, new_sign, distance_delta):
+    def update_sign(self, new_sign, distance_delta, image):
         new_sign_image, (x1, y1, x2, y2, score, class_id) = new_sign
         if self.use_sharpness:
             self.compare_sharpness_handler(new_sign_image)
@@ -81,6 +85,7 @@ class Sign:
         self.last_bboxes.append(self.bbox)
         self.score = score
         self.last_seen = 0
+        self.frame_img = image
 
     def get_bbox(self):
         return self.bbox
@@ -159,19 +164,20 @@ class SignTracker:
         y_dist = center1[1] - center2[1]
         return x_dist, y_dist
 
-    def add_sign(self, sign):
+    def add_sign(self, sign, image):
         _, (x1, y1, x2, y2, score, class_id) = sign
         if (score > self.score_threshold
                 and sign[1][0] > self.image_size[0] - self.ROI[0]
                 and sign[1][1] > self.image_size[1] - self.ROI[1]):
-            self.signs[self.ID] = Sign(sign, self.ID)
+            self.signs[self.ID] = Sign(sign, self.ID, image)
             self.ID += 1
 
-    def add_signs(self, signs):
+    def add_signs(self, signs, image):
         for sign in signs:
-            self.add_sign(sign)
+            self.add_sign(sign, image)
 
     def remove_signs(self, matched_indices, current_signs):
+        selected_frames = []
         selected_signs = []
         selected_results = []
         for sign in current_signs:
@@ -179,9 +185,10 @@ class SignTracker:
                 sign.increase_last_seen()
                 if sign.last_seen > self.no_detection_threshold:
                     selected_signs.append(sign.return_sign())
+                    selected_frames.append(sign.return_frame())
                     selected_results.append(sign.return_results())
                     del self.signs[sign.ID]
-        return selected_signs, selected_results
+        return selected_frames, selected_signs, selected_results
 
     def outside_ROI(self, sign):
         x1, y1, x2, y2 = self.return_bbox(sign)
@@ -189,7 +196,7 @@ class SignTracker:
             return True
         return False
 
-    def match_signs(self, new_signs, current_signs):
+    def match_signs(self, new_signs, current_signs, image):
         matched_indices = set()
         for new_sign in new_signs:
             best_match_sign = None
@@ -205,10 +212,10 @@ class SignTracker:
                     best_match_sign = sign
 
             if best_match > self.IOU_threshold:
-                best_match_sign.update_sign(new_sign, self.distance_between_centers(best_match_sign, new_sign))
+                best_match_sign.update_sign(new_sign, self.distance_between_centers(best_match_sign, new_sign), image)
                 matched_indices.add(best_match_sign.ID)
             else:
-                self.add_sign(new_sign)
+                self.add_sign(new_sign, image)
 
         return matched_indices
 
@@ -216,16 +223,16 @@ class SignTracker:
         if self.debug_mode:
             self.curr_image = image
         if not self.signs:
-            self.add_signs(new_sign_list)
-            return [], [], image
+            self.add_signs(new_sign_list, image)
+            return [], [], [], image
         current_signs = list(self.signs.values())
-        matched_indices = self.match_signs(new_sign_list, current_signs)
-        selected_signs, selected_results = self.remove_signs(matched_indices, current_signs)
+        matched_indices = self.match_signs(new_sign_list, current_signs, image)
+        selected_frames, selected_signs, selected_results = self.remove_signs(matched_indices, current_signs)
         if self.debug_mode:
             self.show_debug(self.curr_image)
         if self.enable_preview:
             image = self.create_preview(image)
-        return selected_signs, selected_results, image
+        return selected_frames, selected_signs, selected_results, image
 
     def draw_bbox(self, image):
         for sign in self.signs.values():
