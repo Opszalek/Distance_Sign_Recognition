@@ -63,7 +63,7 @@ class SignTextRecognitionSystem:
     def return_detection_model(self, model_type=None):
         # Here you can add more models for sign recognition
         if model_type == 'yolov8n':
-            path_to_model = 'Sign_recognition/yolo8n.pt'
+            path_to_model = 'Sign_recognition/yolov8n.pt'
         elif model_type == 'yolov9t':
             path_to_model = 'Sign_recognition/yolov9t.pt'
         elif model_type == 'yolov9s':
