@@ -288,8 +288,13 @@ class SignTextRecognitionSystem:
             self.display_sign_text(signs, texts)
 
     def process_frame(self, image):
+        """
+        Process frame, follow sign crop it and detect text
+        :param image: image to process
+        :return: list of cropped signs and text
+        """
         signs, results = self.detect_signs(image)
-        selected_signs, selected_results, annotated_image = self.track_signs(signs, results, image)
+        selected_frames, selected_signs, selected_results, annotated_image = self.track_signs(signs, results, image)
         text, signs_adjusted = self.handle_text_detection(selected_signs)
         self.args_handler(image, signs_adjusted, text)
         if self.enable_preview:
@@ -297,11 +302,21 @@ class SignTextRecognitionSystem:
         return signs_adjusted, text
 
     def process_image(self, image):
+        """
+        Process image and return cropped signs and text
+        """
         signs, results = self.detect_signs(image)
         text, signs_adjusted = self.handle_text_detection(signs)
         self.args_handler(image, signs_adjusted, text)
         return signs_adjusted, text
 
+    def frame_selector(self, image):
+        """
+        Process image and return cropped signs and whole frame
+        """
+        signs, results = self.detect_signs(image)
+        selected_frames, selected_signs, selected_results, annotated_image = self.track_signs(signs, results, image)
+        return selected_signs, selected_results, annotated_image
 
 def get_images_from_directory(directory_path):
     sorted_files = sorted(os.listdir(directory_path), key=lambda x: int(x.split('_')[-1].split('.')[0]))
