@@ -328,7 +328,10 @@ class SignTextRecognitionSystem:
         signs, results = self.detect_signs(image)
         selected_frames, selected_signs, selected_results, annotated_image = self.track_signs(signs, results, image)
         self.args_handler(selected_signs, selected_frames, timestamp=timestamp)
-        return selected_signs, selected_results, annotated_image
+        if self.enable_preview:
+            return selected_signs, selected_results, annotated_image
+        else:
+            return selected_signs, selected_frames
 
 def get_images_from_directory(directory_path):
     sorted_files = sorted(os.listdir(directory_path), key=lambda x: int(x.split('_')[-1].split('.')[0]))
