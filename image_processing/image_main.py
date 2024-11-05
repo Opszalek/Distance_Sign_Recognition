@@ -17,7 +17,7 @@ class SignTextRecognitionSystem:
 
         #Params when running the script
         self.save_results = kwargs.get('save_results', False)
-        self.save_frames = kwargs.get('save_frames', False)
+        self.save_signs = kwargs.get('save_signs', False)
         self.show_signs = kwargs.get('show_signs', False)
         self.show_images = kwargs.get('show_images', False)
         self.show_segmentation_masks = kwargs.get('show_segmentation_masks', False)
@@ -72,6 +72,10 @@ class SignTextRecognitionSystem:
             path_to_model = 'Sign_recognition/yolov10n.pt'
         elif model_type == 'yolov10l':
             path_to_model = 'Sign_recognition/yolov10l.pt'
+        elif model_type == 'yolov8n_cpu':
+            path_to_model = 'Sign_recognition/yolov8n_int8_openvino_model/'
+        elif model_type == 'yolov11n_cpu':
+            path_to_model = 'Sign_recognition/yolo11_sign_int8_openvino_model/'
         else:
             return 1
 
@@ -98,9 +102,12 @@ class SignTextRecognitionSystem:
     def track_signs(self, signs, results, image):
         return self.tracker.handle_tracking(list(zip(signs, results)), image)
 
-    def save_frame(self, image):
-        cv2.imwrite(self.results_path + f'/frames/frame_{self.frame_number}.png', image)
+    def save_frame(self, image, timestamp):
+        cv2.imwrite(self.results_path + f'/frames/{timestamp}.png', image)
         self.frame_number += 1
+
+    def save_sign(self, sign, timestamp):
+        cv2.imwrite(self.results_path + f'/signs/{timestamp}.png', sign)
 
     def auto_contrast(self, image):
         contrast = np.std(image)
@@ -243,7 +250,7 @@ class SignTextRecognitionSystem:
             cv2.imshow('Sign', sign)
 
     def create_out_dir(self):
-        if self.save_results or self.save_frames:
+        if self.save_results or self.save_signs:
             os.makedirs(os.path.join(self.results_path, self.date_hour), exist_ok=True)
 
             self.results_path = os.path.join(self.results_path, self.date_hour)
@@ -256,8 +263,10 @@ class SignTextRecognitionSystem:
             os.makedirs(os.path.join(self.results_path, 'signs'),
                         exist_ok=True)
 
-        if self.save_frames:
+        if self.save_signs:
             os.makedirs(os.path.join(self.results_path, 'frames'),
+                        exist_ok=True)
+            os.makedirs(os.path.join(self.results_path, 'signs'),
                         exist_ok=True)
 
     def save_result(self, signs, texts):
@@ -279,43 +288,46 @@ class SignTextRecognitionSystem:
             cv2.imwrite(self.results_path + f'/signs/sign_{self.cropped_sign_number}.png', sign)
             self.cropped_sign_number += 1
 
-    def args_handler(self, image, signs, texts):
-        if self.save_results and len(signs) > 0:
+    def args_handler(self, signs, sign_frames, texts=None, timestamp=None):
+        if self.save_results and len(signs) > 0 and texts:
             self.save_result(signs, texts)
-        if self.save_frames:
-            self.save_frame(image)
-        if self.show_signs:
+        if self.save_signs and len(signs) > 0:
+            self.save_frame(sign_frames[0], timestamp)
+            self.save_sign(signs[0], timestamp)
+        if self.show_signs and texts:
             self.display_sign_text(signs, texts)
 
-    def process_frame(self, image):
+    def process_frame(self, image, timestamp):
         """
         Process frame, follow sign crop it and detect text
         :param image: image to process
+        :param timestamp: timestamp of the image
         :return: list of cropped signs and text
         """
         signs, results = self.detect_signs(image)
         selected_frames, selected_signs, selected_results, annotated_image = self.track_signs(signs, results, image)
         text, signs_adjusted = self.handle_text_detection(selected_signs)
-        self.args_handler(image, signs_adjusted, text)
+        self.args_handler(signs_adjusted, selected_frames, texts=text, timestamp=timestamp)
         if self.enable_preview:
             return signs_adjusted, text, annotated_image
         return signs_adjusted, text
 
-    def process_image(self, image):
+    def process_image(self, image, timestamp):
         """
         Process image and return cropped signs and text
         """
         signs, results = self.detect_signs(image)
         text, signs_adjusted = self.handle_text_detection(signs)
-        self.args_handler(image, signs_adjusted, text)
+        self.args_handler(image, signs_adjusted, text, timestamp=timestamp)
         return signs_adjusted, text
 
-    def frame_selector(self, image):
+    def frame_selector(self, image, timestamp):
         """
         Process image and return cropped signs and whole frame
         """
         signs, results = self.detect_signs(image)
         selected_frames, selected_signs, selected_results, annotated_image = self.track_signs(signs, results, image)
+        self.args_handler(selected_signs, selected_frames, timestamp=timestamp)
         return selected_signs, selected_results, annotated_image
 
 def get_images_from_directory(directory_path):
@@ -339,20 +351,21 @@ def __main__():
     video_source_path = '/home/opszalek/ALL_PIKIETAZ_VIDEOS/TEST_MP4.mp4'#'/path/to/video.mp4'
     image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'#'/path/to/directory/with/images'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov10n', segmentation_type='yolov8l-seg-cropped',
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8n_cpu', segmentation_type='yolov8l-seg-cropped',
                                                              save_results=False, show_signs=True,
-                                                             show_images=True, save_frames=False,
-                                                             enable_preview=False,
+                                                             show_images=True, save_signs=True,
+                                                             enable_preview=True,
                                                              ocr='paddle', detection_type='contrast_straighten')
 
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)
         for image in image_generator:
-            signs_adjusted, text, annotated_image = sign_text_recognition_system.process_frame(image)
-            print(text)
+            # signs_adjusted, text, annotated_image = sign_text_recognition_system.process_frame(image, timestamp=datetime.now())
+            selected_signs, selected_results, annotated_image = sign_text_recognition_system.frame_selector(image, timestamp=datetime.now())
+            # print(text)
             annotated_image = cv2.resize(annotated_image, (640, 640))
             cv2.imshow('Annotated Image', annotated_image)
-            cv2.waitKey(0)
+            cv2.waitKey(1)
     elif image_source_type == 'directory':
         image_generator = get_images_from_directory(image_source_path)
         for image in image_generator:

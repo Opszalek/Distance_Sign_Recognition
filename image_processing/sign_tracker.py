@@ -220,6 +220,14 @@ class SignTracker:
         return matched_indices
 
     def handle_tracking(self, new_sign_list, image):
+        """
+        :param new_sign_list: list of signs in the current frame
+        :param image: current frame
+        :return: selected_frames: list containing frames with selected signs
+                 selected_signs: list of selected sings
+                 selected_results: list of results
+                 image: current frame
+        """
         if self.debug_mode:
             self.curr_image = image
         if not self.signs:
