@@ -3,14 +3,14 @@ import cv2
 
 class SignRecognition(YOLO):
     def __init__(self, model_path, **kwargs):
-        super().__init__(model_path)
+        super().__init__(model_path, task="detect")
         self.show_images = kwargs.get('show_images', False)
         self.show_signs = kwargs.get('show_signs', False)
         self.prob_threshold = kwargs.get('prob_threshold', 0.4)
         self.iou_threshold = kwargs.get('iou_threshold', 0.3)
 
     def predict_sign(self, data):
-        return self.predict(source=data, conf=self.prob_threshold)[0]
+        return self.predict(source=data, conf=self.prob_threshold, device="cpu")[0]
 
     @staticmethod
     def show_image(image, bboxes):
