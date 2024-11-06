@@ -2,7 +2,7 @@ import cv2
 from image_processing.sign_recognition import SignRecognition
 from image_processing.sign_segmentation import SignSegmentation
 from image_processing.PaddleOCR_detection_recognition import PaddleOCR_sign
-from image_processing.EasyOCR_detection_recognition import EasyOCR_sign
+# from image_processing.EasyOCR_detection_recognition import EasyOCR_sign
 from image_processing import sign_tracker
 import os
 from datetime import datetime
@@ -42,7 +42,7 @@ class SignTextRecognitionSystem:
         self.sign_segmentation = self.return_segmentation_model(model_type=self.segmentation_type)
         self.tracker = sign_tracker.SignTracker(enable_preview=self.enable_preview)
         self.text_det_rec_paddle = PaddleOCR_sign()
-        self.text_det_rec_easy = EasyOCR_sign()
+        # self.text_det_rec_easy = EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=self.ocr_type)
 
     def reset_system(self):
@@ -55,8 +55,8 @@ class SignTextRecognitionSystem:
         # OCR should have predict_text method which takes list of images and returns [[[bbox, (text, confidence)],[bbox, (text, confidence)]]]
         if ocr_type == 'paddle':
             return self.text_det_rec_paddle
-        elif ocr_type == 'easy':
-            return self.text_det_rec_easy
+        # elif ocr_type == 'easy':
+        #     return self.text_det_rec_easy
         else:
             raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
 
