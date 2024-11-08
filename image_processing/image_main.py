@@ -37,6 +37,7 @@ class SignTextRecognitionSystem:
         self.create_out_dir()
         self.cropped_sign_number = 1
         self.frame_number = 1
+        self.last_timestamp = 0
 
         self.sign_detection = self.return_detection_model(model_type=self.model_type)
         self.sign_segmentation = self.return_segmentation_model(model_type=self.segmentation_type)
@@ -268,6 +269,8 @@ class SignTextRecognitionSystem:
                         exist_ok=True)
             os.makedirs(os.path.join(self.results_path, 'signs'),
                         exist_ok=True)
+            os.makedirs(os.path.join(self.results_path, 'text'),
+                        exist_ok=True)
 
     def save_result(self, signs, texts):
         text_to_save = []
@@ -333,11 +336,33 @@ class SignTextRecognitionSystem:
         else:
             return selected_signs, selected_frames
 
-def get_images_from_directory(directory_path):
-    sorted_files = sorted(os.listdir(directory_path), key=lambda x: int(x.split('_')[-1].split('.')[0]))
-    for filename in sorted_files:
-        if filename.endswith(('.png', '.jpg', '.jpeg')):
-            yield cv2.imread(os.path.join(directory_path, filename))
+    def process_sign_images(self, continue_processing=False):
+        """
+        Looks for images in folder and processes them. Can be stopped and will continue from last image.
+        """
+        image_iterator = get_images_from_directory(self.results_path + '/signs/', sort_type=1)
+        for sign, timestamp in image_iterator:
+            if timestamp > self.last_timestamp:
+                text, signs_adjusted = self.handle_text_detection([sign])
+                print(timestamp)
+                with open(self.results_path + f'/text/{timestamp}.txt', 'w') as f:
+                    f.write(f"{text}\n")
+                self.last_timestamp = timestamp
+                if not continue_processing:
+                    break
+
+def get_images_from_directory(directory_path, sort_type=0):
+    if sort_type == 1:
+        sorted_files = sorted(os.listdir(directory_path), key=lambda x: int(x.split('.')[0]))
+        for filename in sorted_files:
+            if filename.endswith(('.png', '.jpg', '.jpeg')):
+                timestamp = int(filename.split('.')[0])
+                yield cv2.imread(os.path.join(directory_path, filename)), timestamp
+    else:
+        sorted_files = sorted(os.listdir(directory_path), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        for filename in sorted_files:
+            if filename.endswith(('.png', '.jpg', '.jpeg')):
+                yield cv2.imread(os.path.join(directory_path, filename))
 
 
 def get_images_from_video(video_path):
@@ -360,11 +385,14 @@ def __main__():
                                                              enable_preview=True,
                                                              ocr='paddle', detection_type='contrast_straighten')
 
+    # sign_text_recognition_system.last_timestamp=15
+    # for i in range(10):
+    #     sign_text_recognition_system.process_sign_images()
     if image_source_type == 'video':
         image_generator = get_images_from_video(video_source_path)
         for image in image_generator:
-            # signs_adjusted, text, annotated_image = sign_text_recognition_system.process_frame(image, timestamp=datetime.now())
-            selected_signs, selected_results, annotated_image = sign_text_recognition_system.frame_selector(image, timestamp=datetime.now())
+            signs_adjusted, text, annotated_image = sign_text_recognition_system.process_frame(image, timestamp=datetime.now())
+            # selected_signs, selected_results, annotated_image = sign_text_recognition_system.frame_selector(image, timestamp=datetime.now())
             # print(text)
             annotated_image = cv2.resize(annotated_image, (640, 640))
             cv2.imshow('Annotated Image', annotated_image)
