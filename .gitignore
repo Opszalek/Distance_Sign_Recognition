@@ -25,6 +25,7 @@
 # Specific files in directories
 !image_processing/*.py
 !Models/download_models.sh
+!Models/download_models.bat
 !Models/README.md
 !Models/version.txt
 !Models/Sign_recognition/README.md
