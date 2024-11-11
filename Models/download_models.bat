@@ -22,4 +22,6 @@ fc /b version.txt "%OUTPUT_DIR%\version_drive.txt" >nul
 if %errorlevel% neq 0 (
     gdown --folder https://drive.google.com/drive/folders/1F-84oPjwY6zqReKcOvymW7Q_SfKByVAD?usp=sharing -O "%OUTPUT_DIR%"
     move "%OUTPUT_DIR%\version_drive.txt" "%OUTPUT_DIR%\version.txt"
+) else (
+    echo Models are up to date
 )
