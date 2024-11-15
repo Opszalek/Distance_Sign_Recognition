@@ -14,7 +14,7 @@ OUTPUT_DIR="."
 mkdir -p $OUTPUT_DIR
 
 # Download the folder
-gdown --fuzzy https://drive.google.com/file/d/1qB48lRCnADnWB24bZMyeASdzFTCEAdQD/view?usp=sharing -O $OUTPUT_DIR/version_drive.txt
+gdown --fuzzy https://docs.google.com/document/d/1n2NpuAOEweBrwn-rftuyUz2dGmns0JosEMvYdXhu-kU/edit?usp=sharing -O $OUTPUT_DIR/version_drive.txt
 
 if ! cmp -s version.txt version_drive.txt ; then
     gdown --folder https://drive.google.com/drive/folders/1F-84oPjwY6zqReKcOvymW7Q_SfKByVAD?usp=sharing -O $OUTPUT_DIR
