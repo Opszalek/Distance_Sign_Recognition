@@ -14,7 +14,7 @@ class SignTextRecognitionSystem:
         self.results_path = kwargs.get('results_path', '../Dataset/output')
         self.frames_path = kwargs.get('frames_path', '../Dataset/frame')
         self.models_path = kwargs.get('models_path', '../Models')
-
+        self.system_version = kwargs.get('system_version', 'Linux')
         #Params when running the script
         self.save_results = kwargs.get('save_results', False)
         self.save_signs = kwargs.get('save_signs', False)
@@ -63,31 +63,55 @@ class SignTextRecognitionSystem:
 
     def return_detection_model(self, model_type=None):
         # Here you can add more models for sign recognition
-        if model_type == 'yolov8n':
-            path_to_model = 'Sign_recognition/yolov8n.pt'
-            model_image_size = 640
-        elif model_type == 'yolov8n_cpu':
-            path_to_model = 'Sign_recognition/yolov8n_int8_openvino_model/'
-            model_image_size = 640
-        elif model_type == 'yolov8n_cpu_480':
-            path_to_model = 'Sign_recognition/best_int8_openvino_model_480/'
-            model_image_size = 480
-        else:
-            return 1#TODO: return error
+        if self.system_version == 'Linux':
+            if model_type == 'yolov8n':
+                path_to_model = 'Sign_recognition/yolov8n.pt'
+                model_image_size = 640
+            elif model_type == 'yolov8n_cpu':
+                path_to_model = 'Sign_recognition/yolov8n_int8_openvino_model/'
+                model_image_size = 640
+            elif model_type == 'yolov8n_cpu_480':
+                path_to_model = 'Sign_recognition/best_int8_openvino_model_480/'
+                model_image_size = 480
+            else:
+                return 1#TODO: return error
+
+        elif self.system_version == 'Windows':#TODO: add model paths for Windows
+            if model_type == 'yolov8n':
+                path_to_model = 'Sign_recognition/yolov8n.pt'
+                model_image_size = 640
+            elif model_type == 'yolov8n_cpu':
+                path_to_model = 'Sign_recognition/yolov8n_int8_openvino_model/'
+                model_image_size = 640
+            elif model_type == 'yolov8n_cpu_480':
+                path_to_model = 'Sign_recognition/best_int8_openvino_model_480/'
+                model_image_size = 480
+            else:
+                return 1
 
         path_to_model = os.path.join(self.models_path, path_to_model)
         return SignRecognition(path_to_model, show_images=self.show_images, model_imgsz=model_image_size)
 
     def return_segmentation_model(self, model_type):
         # Here you can add more models for sign segmentation
-        if model_type == 'yolov9c-seg':
-            path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
-        elif model_type == 'yolov9c-seg-extended':
-            path_to_model = 'Sign_segmentation/yolov9c-seg-extended.pt'
-        elif model_type == 'yolov8l-seg-cropped':
-            path_to_model = 'Sign_segmentation/yolov8l-seg-cropped.pt'
-        else:
-            return 1
+        if self.system_version == 'Linux':
+            if model_type == 'yolov9c-seg':
+                path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
+            elif model_type == 'yolov9c-seg-extended':
+                path_to_model = 'Sign_segmentation/yolov9c-seg-extended.pt'
+            elif model_type == 'yolov8l-seg-cropped':
+                path_to_model = 'Sign_segmentation/yolov8l-seg-cropped.pt'
+            else:
+                return 1
+        elif self.system_version == 'Windows': #TODO: add model paths for Windows
+            if model_type == 'yolov9c-seg':
+                path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
+            elif model_type == 'yolov9c-seg-extended':
+                path_to_model = 'Sign_segmentation/yolov9c-seg-extended.pt'
+            elif model_type == 'yolov8l-seg-cropped':
+                path_to_model = 'Sign_segmentation/yolov8l-seg-cropped.pt'
+            else:
+                return 1
 
         path_to_model = os.path.join(self.models_path, path_to_model)
         return SignSegmentation(path_to_model, show_masks=self.show_segmentation_masks)
