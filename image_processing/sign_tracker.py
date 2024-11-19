@@ -1,24 +1,19 @@
 import cv2
-import pywt
-
-import numpy as np
 
 class Sign:
-    def __init__(self, new_sign, ID, image, use_sharpness=False):
+    def __init__(self, new_sign, ID, image):
         sign_img, (x1, y1, x2, y2, score, class_id) = new_sign
         self.bbox = (x1, y1, x2, y2)
         self.score = score
         self.class_id = class_id
         self.last_seen = 0
         self.ID = ID
-        self.sharpness_func = Sign.canny_score
         self.sign_img = sign_img
         self.frame_img = image
-        self.sharpness_score = self.sharpness_func(cv2.resize(self.sign_img, (500, 120)))
         self.last_bboxes = []
         self.last_bboxes.append(self.bbox)
         self.distance_delta = [0, 0]
-        self.use_sharpness = use_sharpness
+        self.occurrences = 0
 
     def return_sign(self):
         return self.sign_img
@@ -29,73 +24,29 @@ class Sign:
     def return_results(self):
         return self.bbox[0], self.bbox[1], self.bbox[2], self.bbox[3], self.score, self.class_id
 
-#DEFINIED SHARPNESS SCORE FUNCTIONS---------------------------------------------------
-    @staticmethod
-    def laplacian_score(image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-        variance = laplacian.var()
-        return variance
-
-    @staticmethod
-    def sobel_score(image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-        sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-        sobel_magnitude = np.sqrt(sobel_x ** 2 + sobel_y ** 2)
-        variance = sobel_magnitude.var()
-        return variance
-
-    @staticmethod
-    def wavelet_score(image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        coeffs = pywt.wavedec2(gray, 'db1', level=2)
-        details = coeffs[1:]
-        score = 0
-        for level in details:
-            LH, HL, HH = level
-            score += np.mean(np.abs(HH))
-        return score
-
-    @staticmethod
-    def canny_score(image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 100, 200)
-        score = np.sum(edges) / (gray.shape[0] * gray.shape[1])
-        return score
-#--------------------------------------------------------------------------------------
-
-    def compare_sharpness_handler(self, new_sign_img):
-        new_sharpness_score = self.sharpness_func(new_sign_img)
-        if new_sharpness_score >= self.sharpness_score:
-            self.sharpness_score = new_sharpness_score
-            self.sign_img = new_sign_img
-
     def increase_last_seen(self):
         self.last_seen += 1
 
     def update_sign(self, new_sign, distance_delta, image):
         new_sign_image, (x1, y1, x2, y2, score, class_id) = new_sign
-        if self.use_sharpness:
-            self.compare_sharpness_handler(new_sign_image)
-        else:
-            self.sign_img = new_sign_image
+        self.sign_img = new_sign_image
         self.distance_delta = distance_delta
         self.bbox = (x1, y1, x2, y2)
         self.last_bboxes.append(self.bbox)
         self.score = score
         self.last_seen = 0
+        self.occurrences += 1
         self.frame_img = image
 
     def get_bbox(self):
         return self.bbox
-
 
 class SignTracker:
     def __init__(self, debug_mode=False, enable_preview=False):
         self.signs = {}
         self.ID = 1
         self.no_detection_threshold = 1
+        self.occurrences_threshold = 2
         self.IOU_threshold = 0.75 #0.55
         self.score_threshold = 0.4#0.55
         self.image_size = [2048, 2048]
@@ -184,9 +135,10 @@ class SignTracker:
             if sign.ID not in matched_indices:
                 sign.increase_last_seen()
                 if sign.last_seen > self.no_detection_threshold:
-                    selected_signs.append(sign.return_sign())
-                    selected_frames.append(sign.return_frame())
-                    selected_results.append(sign.return_results())
+                    if sign.occurrences > self.occurrences_threshold:
+                        selected_signs.append(sign.return_sign())
+                        selected_frames.append(sign.return_frame())
+                        selected_results.append(sign.return_results())
                     del self.signs[sign.ID]
         return selected_frames, selected_signs, selected_results
 
