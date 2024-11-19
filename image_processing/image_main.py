@@ -65,23 +65,18 @@ class SignTextRecognitionSystem:
         # Here you can add more models for sign recognition
         if model_type == 'yolov8n':
             path_to_model = 'Sign_recognition/yolov8n.pt'
-        elif model_type == 'yolov9t':
-            path_to_model = 'Sign_recognition/yolov9t.pt'
-        elif model_type == 'yolov9s':
-            path_to_model = 'Sign_recognition/yolov9s.pt'
-        elif model_type == 'yolov10n':
-            path_to_model = 'Sign_recognition/yolov10n.pt'
-        elif model_type == 'yolov10l':
-            path_to_model = 'Sign_recognition/yolov10l.pt'
+            model_image_size = 640
         elif model_type == 'yolov8n_cpu':
             path_to_model = 'Sign_recognition/yolov8n_int8_openvino_model/'
-        elif model_type == 'yolov11n_cpu':
-            path_to_model = 'Sign_recognition/yolo11_sign_int8_openvino_model/'
+            model_image_size = 640
+        elif model_type == 'yolov8n_cpu_480':
+            path_to_model = 'Sign_recognition/best_int8_openvino_model_480/'
+            model_image_size = 480
         else:
-            return 1
+            return 1#TODO: return error
 
         path_to_model = os.path.join(self.models_path, path_to_model)
-        return SignRecognition(path_to_model, show_images=self.show_images)
+        return SignRecognition(path_to_model, show_images=self.show_images, model_imgsz=model_image_size)
 
     def return_segmentation_model(self, model_type):
         # Here you can add more models for sign segmentation
@@ -379,7 +374,7 @@ def __main__():
     video_source_path = '/home/opszalek/ALL_PIKIETAZ_VIDEOS/TEST_MP4.mp4'#'/path/to/video.mp4'
     image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'#'/path/to/directory/with/images'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8n_cpu', segmentation_type='yolov8l-seg-cropped',
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8n_cpu_480', segmentation_type='yolov8l-seg-cropped',
                                                              save_results=False, show_signs=True,
                                                              show_images=True, save_signs=True,
                                                              enable_preview=True,
