@@ -15,7 +15,7 @@ if not exist "%OUTPUT_DIR%" (
 )
 
 REM Download version file
-gdown --fuzzy https://docs.google.com/document/d/1n2NpuAOEweBrwn-rftuyUz2dGmns0JosEMvYdXhu-kU/edit?usp=sharing -O "%OUTPUT_DIR%\version_drive.txt"
+gdown --fuzzy https://drive.google.com/file/d/1lCi-ycDiL2mBuJAC5RhNSHA1fDzdzo2p/view?usp=sharing -O "%OUTPUT_DIR%\version_drive.txt"
 
 REM Compare version files and download folder if they differ
 fc /b version.txt "%OUTPUT_DIR%\version_drive.txt" >nul
