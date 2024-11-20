@@ -11,9 +11,10 @@ import numpy as np
 
 class SignTextRecognitionSystem:
     def __init__(self, **kwargs):
-        self.results_path = kwargs.get('results_path', '../Dataset/output')
-        self.frames_path = kwargs.get('frames_path', '../Dataset/frame')
-        self.models_path = kwargs.get('models_path', '../Models')
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Dataset'))
+        self.results_path = kwargs.get('results_path', os.path.join(base_dir, 'output'))
+        self.frames_path = kwargs.get('frames_path', os.path.join(base_dir, 'frame'))
+        self.models_path = kwargs.get('models_path', os.path.abspath('../Models'))
         self.system_version = kwargs.get('system_version', 'Linux')
         #Params when running the script
         self.save_results = kwargs.get('save_results', False)
@@ -33,7 +34,7 @@ class SignTextRecognitionSystem:
         self.std_hysteresis = 10
         self.bbox_height_threshold = 0.2
 
-        self.date_hour = datetime.now().strftime("%d-%m-%Y_%H:%M")
+        self.date_hour = datetime.now().strftime("%d-%m-%Y_%H-%M")
         self.create_out_dir()
         self.cropped_sign_number = 1
         self.frame_number = 1
@@ -78,13 +79,13 @@ class SignTextRecognitionSystem:
 
         elif self.system_version == 'Windows':#TODO: add model paths for Windows
             if model_type == 'yolov8n':
-                path_to_model = 'Sign_recognition/yolov8n.pt'
+                path_to_model = r'Sign_recognition\yolov8n.pt'
                 model_image_size = 640
             elif model_type == 'yolov8n_cpu':
-                path_to_model = 'Sign_recognition/yolov8n_int8_openvino_model/'
+                path_to_model = r'Sign_recognition\yolov8n_int8_openvino_model/'
                 model_image_size = 640
             elif model_type == 'yolov8n_cpu_480':
-                path_to_model = 'Sign_recognition/best_int8_openvino_model_480/'
+                path_to_model = r'Sign_recognition\best_int8_openvino_model_480\best_int8_openvino_model_480/'
                 model_image_size = 480
             else:
                 return 1
@@ -103,13 +104,13 @@ class SignTextRecognitionSystem:
                 path_to_model = 'Sign_segmentation/yolov8l-seg-cropped.pt'
             else:
                 return 1
-        elif self.system_version == 'Windows': #TODO: add model paths for Windows
+        elif self.system_version == 'Windows':
             if model_type == 'yolov9c-seg':
-                path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
+                path_to_model = r'Sign_segmentation\yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
             elif model_type == 'yolov9c-seg-extended':
-                path_to_model = 'Sign_segmentation/yolov9c-seg-extended.pt'
+                path_to_model = r'Sign_segmentation\yolov9c-seg-extended.pt'
             elif model_type == 'yolov8l-seg-cropped':
-                path_to_model = 'Sign_segmentation/yolov8l-seg-cropped.pt'
+                path_to_model = r'Sign_segmentation\yolov8l-seg-cropped.pt'
             else:
                 return 1
 
@@ -123,11 +124,13 @@ class SignTextRecognitionSystem:
         return self.tracker.handle_tracking(list(zip(signs, results)), image)
 
     def save_frame(self, image, timestamp):
-        cv2.imwrite(self.results_path + f'/frames/{timestamp}.png', image)
+        frame_path = os.path.join(self.results_path, 'frames', f'{timestamp}.png')
+        cv2.imwrite(frame_path, image)
         self.frame_number += 1
 
     def save_sign(self, sign, timestamp):
-        cv2.imwrite(self.results_path + f'/signs/{timestamp}.png', sign)
+        sign_path = os.path.join(self.results_path, 'signs', f'{timestamp}.png')
+        cv2.imwrite(sign_path, sign)
 
     def auto_contrast(self, image):
         contrast = np.std(image)
@@ -300,14 +303,26 @@ class SignTextRecognitionSystem:
                     box, (detected_text, confidence) = text_info
                     text_to_save.append([box, detected_text, confidence])
 
-            with open(self.results_path + f'/labels/results_{self.cropped_sign_number}.txt', 'w') as f:
+            labels_dir = os.path.join(self.results_path, 'labels')
+            os.makedirs(labels_dir, exist_ok=True)
+
+            results_file = os.path.join(labels_dir, f'results_{self.cropped_sign_number}.txt')
+            with open(results_file, 'w') as f:
                 f.write(f"sign_{self.cropped_sign_number}.png\n")
                 for line in text_to_save:
                     f.write(f"{line}\n")
 
-            cv2.imwrite(self.results_path +
-                        f'/signs_annotated/sign_annotated_{self.cropped_sign_number}.png', annotated_sign)
-            cv2.imwrite(self.results_path + f'/signs/sign_{self.cropped_sign_number}.png', sign)
+            annotated_dir = os.path.join(self.results_path, 'signs_annotated')
+            os.makedirs(annotated_dir, exist_ok=True)
+            annotated_file = os.path.join(annotated_dir, f'sign_annotated_{self.cropped_sign_number}.png')
+            cv2.imwrite(annotated_file, annotated_sign)
+
+            signs_dir = os.path.join(self.results_path, 'signs')
+            os.makedirs(signs_dir, exist_ok=True)
+            sign_file = os.path.join(signs_dir, f'sign_{self.cropped_sign_number}.png')
+            cv2.imwrite(sign_file, sign)
+
+            # Increment the sign counter
             self.cropped_sign_number += 1
 
     def args_handler(self, signs, sign_frames, texts=None, timestamp=None):
@@ -355,16 +370,17 @@ class SignTextRecognitionSystem:
         else:
             return selected_signs, selected_frames
 
-    def process_sign_images(self, continue_processing=False):
+    def process_sign_images(self, continue_processing=False):#TODO: Fix paths
         """
         Looks for images in folder and processes them. Can be stopped and will continue from last image.
         """
-        image_iterator = get_images_from_directory(self.results_path + '/signs/', sort_type=1)
+        images_path = os.path.join(self.results_path, 'signs')
+        test_result_path = os.path.join(self.results_path, 'text')
+        image_iterator = get_images_from_directory(images_path, sort_type=1)
         for sign, timestamp in image_iterator:
             if timestamp > self.last_timestamp:
                 text, signs_adjusted = self.handle_text_detection([sign])
-                print(timestamp)
-                with open(self.results_path + f'/text/{timestamp}.txt', 'w') as f:
+                with open(os.path.join(self.results_path, 'text',f'{timestamp}.txt'), 'w') as f:
                     f.write(f"{text}\n")
                 self.last_timestamp = timestamp
                 if not continue_processing:
