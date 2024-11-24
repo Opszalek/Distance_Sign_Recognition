@@ -16,6 +16,8 @@ class SignTextRecognitionSystem:
         self.frames_path = kwargs.get('frames_path', os.path.join(base_dir, 'frame'))
         self.models_path = kwargs.get('models_path', os.path.abspath('../Models'))
         self.system_version = kwargs.get('system_version', 'Linux')
+        self.error_callback = kwargs.get('error_callback', None)
+
         #Params when running the script
         self.save_results = kwargs.get('save_results', False)
         self.save_signs = kwargs.get('save_signs', False)
@@ -48,6 +50,21 @@ class SignTextRecognitionSystem:
         # self.text_det_rec_easy = EasyOCR_sign()
         self.ocr = self.return_ocr(ocr_type=self.ocr_type)
 
+    def error_callback_(self, error_type):
+        if error_type == 'model':
+            error = "Invalid model type. Check available models in return_detection_model and return_segmentation_model methods."
+        elif error_type == 'text_detection':
+            error = "Invalid text detection type. Check available types in handle_text_detection method."
+        elif error_type == 'ocr_type':
+            error = "Invalid OCR type. Check available types in return_ocr method."
+        else:
+            error = "Error occurred. Check error_callback_ method."
+
+        if self.error_callback:
+            self.error_callback(error)
+        else:
+            raise ValueError(error)
+
     def reset_system(self):
         self.cropped_sign_number = 1
         self.frame_number = 1
@@ -61,7 +78,7 @@ class SignTextRecognitionSystem:
         # elif ocr_type == 'easy':
         #     return self.text_det_rec_easy
         else:
-            raise ValueError("Invalid OCR type. Choose 'paddle' or 'easy'.")
+            self.error_callback_('ocr_type')
 
     def return_detection_model(self, model_type=None):
         # Here you can add more models for sign recognition
@@ -76,7 +93,7 @@ class SignTextRecognitionSystem:
                 path_to_model = 'Sign_recognition/best_int8_openvino_model_480/'
                 model_image_size = 480
             else:
-                return 1#TODO: return error
+                self.error_callback_('model')
 
         elif self.system_version == 'Windows':
             if model_type == 'yolov8n':
@@ -89,7 +106,7 @@ class SignTextRecognitionSystem:
                 path_to_model = r'Sign_recognition\best_int8_openvino_model_480\best_int8_openvino_model_480/'
                 model_image_size = 480
             else:
-                return 1
+                self.error_callback_('model')
 
         path_to_model = os.path.join(self.models_path, path_to_model)
         return SignRecognition(path_to_model, show_images=self.show_images, model_imgsz=model_image_size, device=self.device_type)
@@ -104,7 +121,8 @@ class SignTextRecognitionSystem:
             elif model_type == 'yolov8l-seg-cropped-cpu':
                 path_to_model = 'Sign_segmentation/yolov8l-seg-cropped_int8_openvino_model/'
             else:
-                return 1
+                self.error_callback_('model')
+
         elif self.system_version == 'Windows':
             if model_type == 'yolov9c-seg-extended':
                 path_to_model = r'Sign_segmentation\yolov9c-seg-extended.pt'
@@ -113,7 +131,7 @@ class SignTextRecognitionSystem:
             elif model_type == 'yolov8l-seg-cropped-cpu':
                 path_to_model = r'Sign_segmentation\yolov8l-seg-cropped_int8_openvino_model/'
             else:
-                return 1
+                self.error_callback_('model')
 
         path_to_model = os.path.join(self.models_path, path_to_model)
         return SignSegmentation(path_to_model, show_masks=self.show_segmentation_masks, device=self.device_type)
@@ -266,6 +284,8 @@ class SignTextRecognitionSystem:
             return self.detect_text_contrast_straight(signs)
         elif self.detection_type == 'contrast_straighten_background':
             return self.detect_text_straight_extended(signs)
+        else:
+            self.error_callback_('text_detection')
 
 
     def display_sign_text(self, signs, texts):
@@ -371,7 +391,7 @@ class SignTextRecognitionSystem:
         else:
             return selected_signs, selected_frames
 
-    def process_sign_images(self, continue_processing=False):#TODO: Fix paths
+    def process_sign_images(self, continue_processing=False):
         """
         Looks for images in folder and processes them. Can be stopped and will continue from last image.
         """
