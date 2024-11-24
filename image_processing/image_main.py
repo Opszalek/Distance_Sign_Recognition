@@ -26,6 +26,7 @@ class SignTextRecognitionSystem:
         #Params for ROS2
         self.enable_preview = kwargs.get('enable_preview', False)
 
+        self.device_type = kwargs.get('device_type', '')
         self.segmentation_type = kwargs.get('segmentation_type', 'yolov8l-seg_cropped')
         self.model_type = kwargs.get('model_type', 'yolov8')
         self.ocr_type = kwargs.get('ocr', 'paddle')
@@ -77,7 +78,7 @@ class SignTextRecognitionSystem:
             else:
                 return 1#TODO: return error
 
-        elif self.system_version == 'Windows':#TODO: add model paths for Windows
+        elif self.system_version == 'Windows':
             if model_type == 'yolov8n':
                 path_to_model = r'Sign_recognition\yolov8n.pt'
                 model_image_size = 640
@@ -91,31 +92,31 @@ class SignTextRecognitionSystem:
                 return 1
 
         path_to_model = os.path.join(self.models_path, path_to_model)
-        return SignRecognition(path_to_model, show_images=self.show_images, model_imgsz=model_image_size)
+        return SignRecognition(path_to_model, show_images=self.show_images, model_imgsz=model_image_size, device=self.device_type)
 
     def return_segmentation_model(self, model_type):
         # Here you can add more models for sign segmentation
         if self.system_version == 'Linux':
-            if model_type == 'yolov9c-seg':
-                path_to_model = 'Sign_segmentation/yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
-            elif model_type == 'yolov9c-seg-extended':
+            if model_type == 'yolov9c-seg-extended':
                 path_to_model = 'Sign_segmentation/yolov9c-seg-extended.pt'
             elif model_type == 'yolov8l-seg-cropped':
                 path_to_model = 'Sign_segmentation/yolov8l-seg-cropped.pt'
+            elif model_type == 'yolov8l-seg-cropped-cpu':
+                path_to_model = 'Sign_segmentation/yolov8l-seg-cropped_int8_openvino_model/'
             else:
                 return 1
         elif self.system_version == 'Windows':
-            if model_type == 'yolov9c-seg':
-                path_to_model = r'Sign_segmentation\yolov9c-seg_epochs_30_batch_16_dropout_0.1_daw.pt'
-            elif model_type == 'yolov9c-seg-extended':
+            if model_type == 'yolov9c-seg-extended':
                 path_to_model = r'Sign_segmentation\yolov9c-seg-extended.pt'
             elif model_type == 'yolov8l-seg-cropped':
                 path_to_model = r'Sign_segmentation\yolov8l-seg-cropped.pt'
+            elif model_type == 'yolov8l-seg-cropped-cpu':
+                path_to_model = r'Sign_segmentation\yolov8l-seg-cropped_int8_openvino_model/'
             else:
                 return 1
 
         path_to_model = os.path.join(self.models_path, path_to_model)
-        return SignSegmentation(path_to_model, show_masks=self.show_segmentation_masks)
+        return SignSegmentation(path_to_model, show_masks=self.show_segmentation_masks, device=self.device_type)
 
     def detect_signs(self, image):
         return self.sign_detection.process_image(image)
@@ -414,11 +415,12 @@ def __main__():
     video_source_path = '/home/opszalek/ALL_PIKIETAZ_VIDEOS/TEST_MP4.mp4'#'/path/to/video.mp4'
     image_source_path = '/home/opszalek/Projekt_pikietaz/Distance_Sign_Recognition/Dataset/output/15-08-2024_21:45/frames'#'/path/to/directory/with/images'
 
-    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8n_cpu_480', segmentation_type='yolov8l-seg-cropped',
+    sign_text_recognition_system = SignTextRecognitionSystem(model_type='yolov8n_cpu_480', segmentation_type='yolov8l-seg-cropped-cpu',
                                                              save_results=False, show_signs=True,
                                                              show_images=True, save_signs=True,
                                                              enable_preview=True,
-                                                             ocr='paddle', detection_type='contrast_straighten')
+                                                             ocr='paddle', detection_type='contrast_straighten',
+                                                             device_type='cpu')
 
     # sign_text_recognition_system.last_timestamp=15
     # for i in range(10):

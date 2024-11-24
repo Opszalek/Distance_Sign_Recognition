@@ -1,16 +1,15 @@
 from ultralytics import YOLO
 import cv2
-from image_processing import sign_tracker
-import torch
 import numpy as np
 
 class SignSegmentation(YOLO):
     def __init__(self, model_path, **kwargs):
         super().__init__(model_path)
         self.show_masks = kwargs.get('show_masks', False)
+        self.device_ = kwargs.get('device', '')
 
     def segment_sign(self, data):
-        return self(data)[0]
+        return self(source=data, device=self.device_)
 
     def show_mask(self, image, contour):
         mask = cv2.drawContours(np.zeros(image.shape[:2], dtype=np.uint8),
@@ -29,7 +28,7 @@ class SignSegmentation(YOLO):
 
     def return_straight_sign(self, image):
         warped = image
-        results = self(image)
+        results = self.segment_sign(image)
         for result in results:
             for i, det in enumerate(result):
                 contour = det.masks.xy.pop()

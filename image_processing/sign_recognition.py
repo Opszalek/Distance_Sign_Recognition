@@ -9,9 +9,10 @@ class SignRecognition(YOLO):
         self.prob_threshold = kwargs.get('prob_threshold', 0.4)
         self.iou_threshold = kwargs.get('iou_threshold', 0.3)
         self.model_imgsz = kwargs.get('model_imgsz', 640)
+        self.device_ = kwargs.get('device', '')
 
     def predict_sign(self, data):
-        return self.predict(source=data, conf=self.prob_threshold, device="cpu", imgsz=self.model_imgsz)[0]
+        return self.predict(source=data, conf=self.prob_threshold, device=self.device_, imgsz=self.model_imgsz)[0]
 
     @staticmethod
     def show_image(image, bboxes):
