@@ -103,7 +103,7 @@ class SignTextRecognitionSystem:
                 path_to_model = r'Sign_recognition\yolov8n_int8_openvino_model/'
                 model_image_size = 640
             elif model_type == 'yolov8n_cpu_480':
-                path_to_model = r'Sign_recognition\best_int8_openvino_model_480\best_int8_openvino_model_480/'
+                path_to_model = r'Sign_recognition\best_int8_openvino_model_480/'
                 model_image_size = 480
             else:
                 self.error_callback_('model')
